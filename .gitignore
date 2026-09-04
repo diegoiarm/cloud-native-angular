@@ -1,0 +1,28 @@
+# Java / Maven
+pedidos-api/target/
+pedidos-api/!.mvn/wrapper/maven-wrapper.jar
+pedidos-api/.mvn/wrapper/maven-wrapper.jar
+*.class
+
+# Node / Angular
+node_modules/
+dist/
+out-tsc/
+.tmp/
+
+# Logs
+*.log
+npm-debug.log*
+
+# IDEs
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/mcp.json
+
+# OS
+.DS_Store
+Thumbs.db

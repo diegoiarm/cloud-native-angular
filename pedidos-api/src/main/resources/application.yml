@@ -1,0 +1,12 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: pedidos-api
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: https://login.microsoftonline.com/413875c7-b2d6-4bc6-93ee-071e4f43a25e/v2.0
+          jwk-set-uri: https://login.microsoftonline.com/413875c7-b2d6-4bc6-93ee-071e4f43a25e/discovery/v2.0/keys

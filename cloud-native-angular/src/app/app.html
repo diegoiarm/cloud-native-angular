@@ -1,0 +1,35 @@
+<main class="contenedor">
+  <h1>DSY1107 - MSAL + Angular</h1>
+  <section *ngIf="!user">
+    <p>Usuario no autenticado.</p>
+    <button (click)="login()">Iniciar sesión con Microsoft</button>
+  </section>
+  <section *ngIf="user">
+    <h2>Sesión iniciada correctamente</h2>
+    <p>
+      <strong>Nombre:</strong>
+      {{ user.name }}
+    </p>
+    <p>
+      <strong>Cuenta:</strong>
+      {{ user.username }}
+    </p>
+    <p>
+      <strong>Tenant:</strong>
+      {{ user.tenantId }}
+    </p>
+    <button (click)="obtenerAccessToken()">Obtener Access Token</button>
+    <p *ngIf="accessTokenPreview">
+      <strong> Access Token: </strong>
+      <br />
+      {{ accessTokenPreview }}
+    </p>
+    <p>
+      <a routerLink="/protegido"> Ir a ruta protegida </a>
+    </p>
+    <button (click)="consultarPedidos()">Consultar API protegida</button>
+    <pre *ngIf="respuestaApi">{{ respuestaApi | json }}</pre>
+    <button (click)="logout()">Cerrar sesión</button>
+  </section>
+  <router-outlet> </router-outlet>
+</main>
