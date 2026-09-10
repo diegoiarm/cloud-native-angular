@@ -4,6 +4,15 @@ server:
 spring:
   application:
     name: pedidos-api
+  datasource:
+    url: jdbc:postgresql://${DB_HOST}:5432/${DB_NAME:pedidosdb}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    show-sql: true
   security:
     oauth2:
       resourceserver:
