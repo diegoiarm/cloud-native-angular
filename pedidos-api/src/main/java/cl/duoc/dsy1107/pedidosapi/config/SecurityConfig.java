@@ -8,6 +8,7 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -33,17 +34,27 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/publico")
                         .permitAll()
+                        // Toda la API de pedidos exige el scope delegado;
+                        // los roles por operación se validan con @PreAuthorize en el controller.
                         .requestMatchers(
-                                HttpMethod.GET,
-                                "/api/pedidos/**")
+                                "/api/orders/**")
                         .hasAuthority(
                                 "SCOPE_Pedidos.Read")
                         .anyRequest()
                         .authenticated())
                 .oauth2ResourceServer(
                         oauth -> oauth.jwt(
-                                Customizer.withDefaults()));
+                                jwt -> jwt.jwtAuthenticationConverter(
+                                        jwtAuthenticationConverter())));
         return http.build();
+    }
+
+    @Bean
+    JwtAuthenticationConverter jwtAuthenticationConverter() {
+        JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
+        converter.setJwtGrantedAuthoritiesConverter(new JwtAuthorityConverter());
+        converter.setPrincipalClaimName("preferred_username");
+        return converter;
     }
 
     @Bean
