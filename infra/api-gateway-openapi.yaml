@@ -1,0 +1,111 @@
+# =============================================================================
+# Pedidos360 - AWS API Gateway (HTTP API) delante de pedidos-api en EC2
+#
+# Flujo: Angular + MSAL (Access Token) -> API Gateway (JWT Authorizer) -> EC2 (Spring Boot) -> RDS
+#
+# Para publicar:
+#   1) API Gateway -> Create API -> HTTP API -> Import -> subir este archivo.
+#   2) Reemplazar TU-EC2-DNS por el DNS/IP pública de la instancia EC2.
+#   3) Reemplazar TU-DOMINIO en CORS por el dominio real del frontend.
+#   4) Crear el stage "prod" con auto-deploy.
+#
+# API Gateway valida firma, issuer, audience y scope; Spring Security vuelve a
+# validar el token y además aplica la autorización por App Roles.
+# =============================================================================
+openapi: "3.0.1"
+info:
+  title: pedidos360-api
+  description: Punto de entrada a pedidos-api. Valida JWT de Microsoft Entra ID.
+  version: "1.0.0"
+
+x-amazon-apigateway-cors:
+  allowOrigins:
+    - "http://localhost:4200"
+    - "https://TU-DOMINIO.vercel.app"
+  allowMethods:
+    - GET
+    - POST
+    - PUT
+    - OPTIONS
+  allowHeaders:
+    - Authorization
+    - Content-Type
+  maxAge: 600
+
+paths:
+  /api/publico:
+    get:
+      summary: Endpoint público (200 sin token)
+      responses:
+        "200":
+          description: Respuesta pública
+      x-amazon-apigateway-integration:
+        type: http_proxy
+        httpMethod: GET
+        uri: "http://TU-EC2-DNS:8080/api/publico"
+        payloadFormatVersion: "1.0"
+
+  /api/pedidos:
+    get:
+      summary: Lista pedidos (scope Pedidos.Read)
+      security:
+        - EntraJwtAuthorizer:
+            - Pedidos.Read
+      responses:
+        "200":
+          description: Pedidos desde la base de datos
+        "401":
+          description: Sin token o token inválido
+        "403":
+          description: Token sin el scope Pedidos.Read
+      x-amazon-apigateway-integration:
+        type: http_proxy
+        httpMethod: GET
+        uri: "http://TU-EC2-DNS:8080/api/pedidos"
+        payloadFormatVersion: "1.0"
+    post:
+      summary: Crea un pedido (scope Pedidos.Read + rol, validado en Spring)
+      security:
+        - EntraJwtAuthorizer:
+            - Pedidos.Read
+      responses:
+        "200":
+          description: Pedido creado
+        "401":
+          description: Sin token o token inválido
+        "403":
+          description: Sin scope o sin App Role
+      x-amazon-apigateway-integration:
+        type: http_proxy
+        httpMethod: POST
+        uri: "http://TU-EC2-DNS:8080/api/pedidos"
+        payloadFormatVersion: "1.0"
+
+  /api/me:
+    get:
+      summary: Claims del token validado por Spring Security
+      security:
+        - EntraJwtAuthorizer: []
+      responses:
+        "200":
+          description: Claims y authorities
+        "401":
+          description: Sin token o token inválido
+      x-amazon-apigateway-integration:
+        type: http_proxy
+        httpMethod: GET
+        uri: "http://TU-EC2-DNS:8080/api/me"
+        payloadFormatVersion: "1.0"
+
+components:
+  securitySchemes:
+    EntraJwtAuthorizer:
+      type: oauth2
+      flows: {}
+      x-amazon-apigateway-authorizer:
+        type: jwt
+        identitySource: "$request.header.Authorization"
+        jwtConfiguration:
+          issuer: "https://login.microsoftonline.com/413875c7-b2d6-4bc6-93ee-071e4f43a25e/v2.0"
+          audience:
+            - "fe49fbff-96c3-4146-b54e-a81b1d2a2379"

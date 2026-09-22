@@ -24,6 +24,24 @@
       <br />
       {{ accessTokenPreview }}
     </p>
+    <button *ngIf="accessToken" (click)="copiarAccessToken()">
+      Copiar Access Token completo
+    </button>
+    <section *ngIf="accessTokenClaims">
+      <h3>Claims del Access Token</h3>
+      <p><strong>roles:</strong> {{ accessTokenClaims.roles?.join(", ") || "sin roles" }}</p>
+      <p><strong>scp:</strong> {{ accessTokenClaims.scp }}</p>
+      <p><strong>aud:</strong> {{ accessTokenClaims.aud }}</p>
+      <p><strong>iss:</strong> {{ accessTokenClaims.iss }}</p>
+      <p>
+        <strong>exp:</strong>
+        {{ accessTokenClaims.exp * 1000 | date: "medium" }}
+      </p>
+      <details>
+        <summary>Ver todos los claims</summary>
+        <pre>{{ accessTokenClaims | json }}</pre>
+      </details>
+    </section>
     <p>
       <a routerLink="/protegido"> Ir a ruta protegida </a>
     </p>

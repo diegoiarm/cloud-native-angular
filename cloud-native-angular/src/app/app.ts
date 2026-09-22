@@ -20,6 +20,8 @@ import { environment } from "../environments/environment";
 export class App implements OnInit, OnDestroy {
   user: AccountInfo | null = null;
   accessTokenPreview = "";
+  accessToken = "";
+  accessTokenClaims: any = null;
   respuestaApi: any = null;
   private readonly destroying$ = new Subject<void>();
   constructor(
@@ -37,6 +39,10 @@ export class App implements OnInit, OnDestroy {
         next: (result: AuthenticationResult | null) => {
           if (result?.account) {
             this.authService.instance.setActiveAccount(result.account);
+          }
+          // Al volver de acquireTokenRedirect, el token llega aquí.
+          if (result?.scopes.includes(environment.msal.apiScope)) {
+            this.mostrarAccessToken(result.accessToken);
           }
         },
         error: (error) => {
@@ -81,10 +87,10 @@ export class App implements OnInit, OnDestroy {
       })
       .subscribe({
         next: (result) => {
-          this.accessTokenPreview = result.accessToken.substring(0, 90) + "...";
-          this.cdr.markForCheck();
+          this.mostrarAccessToken(result.accessToken);
         },
-        error: () => {
+        error: (error) => {
+          console.error("acquireTokenSilent falló, se usa redirect:", error);
           this.authService.acquireTokenRedirect({
             scopes: [environment.msal.apiScope],
           });
@@ -109,8 +115,28 @@ export class App implements OnInit, OnDestroy {
   }
   logout(): void {
     this.authService.logoutRedirect({
-      postLogoutRedirectUri: "http://localhost:4200",
+      postLogoutRedirectUri: environment.msal.redirectUri,
     });
+  }
+  private mostrarAccessToken(accessToken: string): void {
+    this.accessTokenPreview = accessToken.substring(0, 90) + "...";
+    this.accessToken = accessToken;
+    // Decodifica el payload para mostrar aud, scp, roles, iss y exp.
+    this.accessTokenClaims = this.decodificarJwt(accessToken);
+    this.cdr.markForCheck();
+  }
+  copiarAccessToken(): void {
+    navigator.clipboard.writeText(this.accessToken);
+  }
+  private decodificarJwt(token: string): any {
+    const payload = token.split(".")[1];
+    if (!payload) {
+      return null;
+    }
+    const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
+    const bytes = Uint8Array.from(atob(padded), (c) => c.charCodeAt(0));
+    return JSON.parse(new TextDecoder().decode(bytes));
   }
   ngOnDestroy(): void {
     this.destroying$.next();

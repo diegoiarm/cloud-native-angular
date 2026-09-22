@@ -5,7 +5,7 @@ spring:
   application:
     name: pedidos-api
   datasource:
-    url: jdbc:postgresql://${DB_HOST}:5432/${DB_NAME:pedidosdb}
+    url: jdbc:postgresql://${DB_HOST:localhost}:5432/${DB_NAME:pedidosdb}
     username: ${DB_USER:postgres}
     password: ${DB_PASSWORD}
   jpa:
@@ -19,3 +19,7 @@ spring:
         jwt:
           issuer-uri: https://login.microsoftonline.com/413875c7-b2d6-4bc6-93ee-071e4f43a25e/v2.0
           jwk-set-uri: https://login.microsoftonline.com/413875c7-b2d6-4bc6-93ee-071e4f43a25e/discovery/v2.0/keys
+          # Solo se aceptan tokens emitidos para la API (App_DSY1107_API).
+          audiences:
+            - fe49fbff-96c3-4146-b54e-a81b1d2a2379
+            - api://fe49fbff-96c3-4146-b54e-a81b1d2a2379
