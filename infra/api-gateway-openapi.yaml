@@ -45,40 +45,80 @@ paths:
         uri: "http://TU-EC2-DNS:8080/api/publico"
         payloadFormatVersion: "1.0"
 
-  /api/pedidos:
+  /api/orders:
     get:
-      summary: Lista pedidos (scope Pedidos.Read)
+      summary: Lista pedidos (Cliente solo los suyos)
       security:
         - EntraJwtAuthorizer:
             - Pedidos.Read
       responses:
         "200":
-          description: Pedidos desde la base de datos
+          description: OK
         "401":
           description: Sin token o token inválido
         "403":
-          description: Token sin el scope Pedidos.Read
+          description: Sin scope Pedidos.Read o sin App Role (Spring)
       x-amazon-apigateway-integration:
         type: http_proxy
         httpMethod: GET
-        uri: "http://TU-EC2-DNS:8080/api/pedidos"
+        uri: "http://TU-EC2-DNS:8080/api/orders"
         payloadFormatVersion: "1.0"
     post:
-      summary: Crea un pedido (scope Pedidos.Read + rol, validado en Spring)
+      summary: Crea un pedido (Cliente u Operador)
+      security:
+        - EntraJwtAuthorizer:
+            - Pedidos.Read
+      responses:
+        "201":
+          description: OK
+        "401":
+          description: Sin token o token inválido
+        "403":
+          description: Sin scope Pedidos.Read o sin App Role (Spring)
+      x-amazon-apigateway-integration:
+        type: http_proxy
+        httpMethod: POST
+        uri: "http://TU-EC2-DNS:8080/api/orders"
+        payloadFormatVersion: "1.0"
+
+  /api/orders/{id}:
+    get:
+      summary: Detalle de un pedido
       security:
         - EntraJwtAuthorizer:
             - Pedidos.Read
       responses:
         "200":
-          description: Pedido creado
+          description: OK
         "401":
           description: Sin token o token inválido
         "403":
-          description: Sin scope o sin App Role
+          description: Sin scope Pedidos.Read o sin App Role (Spring)
       x-amazon-apigateway-integration:
         type: http_proxy
-        httpMethod: POST
-        uri: "http://TU-EC2-DNS:8080/api/pedidos"
+        httpMethod: GET
+        uri: "http://TU-EC2-DNS:8080/api/orders/{id}"
+        payloadFormatVersion: "1.0"
+
+  /api/orders/{id}/status:
+    put:
+      summary: Cambia el estado (Operador o Admin)
+      security:
+        - EntraJwtAuthorizer:
+            - Pedidos.Read
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Sin token o token inválido
+        "403":
+          description: Sin scope Pedidos.Read o sin App Role (Spring)
+        "409":
+          description: Transición inválida o stock insuficiente
+      x-amazon-apigateway-integration:
+        type: http_proxy
+        httpMethod: PUT
+        uri: "http://TU-EC2-DNS:8080/api/orders/{id}/status"
         payloadFormatVersion: "1.0"
 
   /api/me:

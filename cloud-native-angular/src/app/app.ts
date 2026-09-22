@@ -99,7 +99,7 @@ export class App implements OnInit, OnDestroy {
   }
   consultarPedidos(): void {
     this.respuestaApi = null;
-    this.http.get(`${environment.apiBaseUrl}/api/pedidos`).subscribe({
+    this.http.get(`${environment.apiBaseUrl}/api/orders`).subscribe({
       next: (respuesta) => {
         this.respuestaApi = respuesta;
         this.cdr.markForCheck();

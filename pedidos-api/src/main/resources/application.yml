@@ -23,3 +23,7 @@ spring:
           audiences:
             - fe49fbff-96c3-4146-b54e-a81b1d2a2379
             - api://fe49fbff-96c3-4146-b54e-a81b1d2a2379
+
+# Microservicio de catálogo (precios y stock). Pedidos lo llama reenviando el token del usuario.
+catalogo:
+  url: ${CATALOGO_URL:http://localhost:8081}

@@ -4,8 +4,6 @@ import java.util.List;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
-import org.springframework.security.authorization.AuthorityAuthorizationManager;
-import org.springframework.security.authorization.AuthorizationManagers;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -36,20 +34,12 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/publico")
                         .permitAll()
+                        // Toda la API de pedidos exige el scope delegado;
+                        // los roles por operación se validan con @PreAuthorize en el controller.
                         .requestMatchers(
-                                HttpMethod.GET,
-                                "/api/pedidos/**")
+                                "/api/orders/**")
                         .hasAuthority(
                                 "SCOPE_Pedidos.Read")
-                        // Crear pedidos requiere el scope y un App Role del negocio.
-                        .requestMatchers(
-                                HttpMethod.POST,
-                                "/api/pedidos/**")
-                        .access(AuthorizationManagers.allOf(
-                                AuthorityAuthorizationManager.hasAuthority(
-                                        "SCOPE_Pedidos.Read"),
-                                AuthorityAuthorizationManager.hasAnyRole(
-                                        "Admin", "Operador", "Cliente")))
                         .anyRequest()
                         .authenticated())
                 .oauth2ResourceServer(
