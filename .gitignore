@@ -1,7 +1,6 @@
 # Java / Maven
-pedidos-api/target/
-pedidos-api/!.mvn/wrapper/maven-wrapper.jar
-pedidos-api/.mvn/wrapper/maven-wrapper.jar
+*/target/
+*/.mvn/wrapper/maven-wrapper.jar
 *.class
 
 # Node / Angular

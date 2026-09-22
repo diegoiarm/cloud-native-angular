@@ -1,11 +1,14 @@
 # =============================================================================
-# Pedidos360 - AWS API Gateway (HTTP API) delante de pedidos-api en EC2
+# Pedidos360 - AWS API Gateway (HTTP API) delante de los microservicios en EC2
 #
-# Flujo: Angular + MSAL (Access Token) -> API Gateway (JWT Authorizer) -> EC2 (Spring Boot) -> RDS
+# Flujo: Angular + MSAL (Access Token) -> API Gateway (JWT Authorizer) -> EC2 (pedidos-api / catalogo-api) -> RDS
+#
+# Los endpoints /api/catalog/stock/* NO se publican: solo los llama pedidos-api internamente.
 #
 # Para publicar:
 #   1) API Gateway -> Create API -> HTTP API -> Import -> subir este archivo.
-#   2) Reemplazar TU-EC2-DNS por el DNS/IP pública de la instancia EC2.
+#   2) Reemplazar TU-EC2-DNS (pedidos-api) y TU-EC2-CATALOGO-DNS (catalogo-api)
+#      por el DNS/IP de cada instancia EC2.
 #   3) Reemplazar TU-DOMINIO en CORS por el dominio real del frontend.
 #   4) Crear el stage "prod" con auto-deploy.
 #
@@ -119,6 +122,79 @@ paths:
         type: http_proxy
         httpMethod: PUT
         uri: "http://TU-EC2-DNS:8080/api/orders/{id}/status"
+        payloadFormatVersion: "1.0"
+
+  # ---- catalogo-api (EC2, puerto 8081) ----
+  /api/catalog/products:
+    get:
+      summary: Lista productos (los tres roles)
+      security:
+        - EntraJwtAuthorizer:
+            - Pedidos.Read
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Sin token o token inválido
+        "403":
+          description: Sin scope Pedidos.Read o sin App Role (Spring)
+      x-amazon-apigateway-integration:
+        type: http_proxy
+        httpMethod: GET
+        uri: "http://TU-EC2-CATALOGO-DNS:8081/api/catalog/products"
+        payloadFormatVersion: "1.0"
+    post:
+      summary: Crea producto (Admin)
+      security:
+        - EntraJwtAuthorizer:
+            - Pedidos.Read
+      responses:
+        "201":
+          description: OK
+        "401":
+          description: Sin token o token inválido
+        "403":
+          description: Sin scope Pedidos.Read o sin App Role (Spring)
+      x-amazon-apigateway-integration:
+        type: http_proxy
+        httpMethod: POST
+        uri: "http://TU-EC2-CATALOGO-DNS:8081/api/catalog/products"
+        payloadFormatVersion: "1.0"
+
+  /api/catalog/products/{id}:
+    get:
+      summary: Detalle de producto
+      security:
+        - EntraJwtAuthorizer:
+            - Pedidos.Read
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Sin token o token inválido
+        "403":
+          description: Sin scope Pedidos.Read o sin App Role (Spring)
+      x-amazon-apigateway-integration:
+        type: http_proxy
+        httpMethod: GET
+        uri: "http://TU-EC2-CATALOGO-DNS:8081/api/catalog/products/{id}"
+        payloadFormatVersion: "1.0"
+    put:
+      summary: Edita precio y stock (Admin)
+      security:
+        - EntraJwtAuthorizer:
+            - Pedidos.Read
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Sin token o token inválido
+        "403":
+          description: Sin scope Pedidos.Read o sin App Role (Spring)
+      x-amazon-apigateway-integration:
+        type: http_proxy
+        httpMethod: PUT
+        uri: "http://TU-EC2-CATALOGO-DNS:8081/api/catalog/products/{id}"
         payloadFormatVersion: "1.0"
 
   /api/me:
