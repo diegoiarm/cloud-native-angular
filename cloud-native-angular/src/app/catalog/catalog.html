@@ -1,0 +1,47 @@
+<section class="panel">
+
+  <h2>Catálogo de Productos</h2>
+
+  <p *ngIf="mensaje" class="ok">{{ mensaje }}</p>
+  <p *ngIf="error" class="err">{{ error }}</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Producto</th>
+        <th>Precio</th>
+        <th>Stock</th>
+        <th *ngIf="esAdmin">Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let producto of productos">
+        <td>{{ producto.nombre }}</td>
+        <td>{{ producto.precio | currency }}</td>
+        <td>{{ producto.stock }}</td>
+        <td *ngIf="esAdmin">
+          <button (click)="editar(producto)">Editar</button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div *ngIf="esAdmin" class="formulario">
+    <h3>{{ form.id ? 'Editar producto' : 'Nuevo producto' }}</h3>
+    <label>
+      Nombre
+      <input type="text" [(ngModel)]="form.nombre">
+    </label>
+    <label>
+      Precio
+      <input type="number" min="0" [(ngModel)]="form.precio">
+    </label>
+    <label>
+      Stock
+      <input type="number" min="0" [(ngModel)]="form.stock">
+    </label>
+    <button (click)="guardar()">{{ form.id ? 'Guardar cambios' : 'Crear' }}</button>
+    <button (click)="nuevo()">Limpiar</button>
+  </div>
+
+</section>

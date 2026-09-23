@@ -39,6 +39,9 @@ export function MSALInterceptorConfigFactory(): MsalInterceptorConfiguration {
   protectedResourceMap.set(`${environment.apiBaseUrl}/*`, [
     environment.msal.apiScope,
   ]);
+  protectedResourceMap.set(`${environment.catalogoBaseUrl}/*`, [
+    environment.msal.apiScope,
+  ]);
   return {
     interactionType: InteractionType.Redirect,
     protectedResourceMap,

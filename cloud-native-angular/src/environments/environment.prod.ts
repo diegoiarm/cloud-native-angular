@@ -3,12 +3,14 @@
 export const environment = {
   production: true,
   msal: {
-    clientId: "198c0fac-457a-43c6-a8a8-f3b90ba14dc1",
-    tenantId: "413875c7-b2d6-4bc6-93ee-071e4f43a25e",
+    clientId: "67e79135-0890-48e1-af3b-0a217b270cfa",
+    tenantId: "6bf42f50-ccc9-46e4-ae46-2b6534675957",
     redirectUri: "https://TU-DOMINIO.vercel.app",
 
-    apiScope: "api://fe49fbff-96c3-4146-b54e-a81b1d2a2379/Pedidos.Read",
+    apiScope: "api://371e0368-c37d-4768-9266-0212824e67ba/Pedidos.Read",
   },
 
+  // En producción ambos microservicios se publican tras el mismo API Gateway.
   apiBaseUrl: "https://TU-API-ID.execute-api.us-east-1.amazonaws.com/prod",
+  catalogoBaseUrl: "https://TU-API-ID.execute-api.us-east-1.amazonaws.com/prod",
 };

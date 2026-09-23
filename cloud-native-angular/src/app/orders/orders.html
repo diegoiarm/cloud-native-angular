@@ -1,0 +1,95 @@
+<section class="panel">
+  <h2>Gestión de Pedidos</h2>
+
+  <p *ngIf="mensaje" class="ok">{{ mensaje }}</p>
+  <p *ngIf="error" class="err">{{ error }}</p>
+
+  <div class="crear" *ngIf="puedeCrear">
+    <h3>Nuevo pedido</h3>
+
+    <div class="linea-nueva">
+      <select [(ngModel)]="nuevoProducto">
+        <option [ngValue]="0" disabled>Selecciona un producto</option>
+        <option *ngFor="let prod of productos" [ngValue]="prod.id">
+          {{ prod.nombre }} ({{ prod.precio | currency }}) — stock
+          {{ prod.stock }}
+        </option>
+      </select>
+      <input type="number" min="1" [(ngModel)]="nuevoCantidad" />
+      <button (click)="agregarLinea()">Agregar</button>
+    </div>
+
+    <ul class="lineas" *ngIf="lineas.length > 0">
+      <li *ngFor="let linea of lineas; index as i">
+        {{ linea.nombre }} x {{ linea.cantidad }}
+        <button (click)="quitarLinea(i)">Quitar</button>
+      </li>
+    </ul>
+
+    <button (click)="crear()">Crear pedido</button>
+  </div>
+
+  <h3>Pedidos</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>N.º</th>
+        <th>Cliente</th>
+        <th>Estado</th>
+        <th>Total</th>
+        <th *ngIf="esGestor">Cambiar estado</th>
+        <th>Detalle</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let pedido of pedidos">
+        <td>{{ pedido.id }}</td>
+        <td>{{ pedido.cliente }}</td>
+        <td><span class="estado">{{ pedido.estado }}</span></td>
+        <td>{{ pedido.total | currency }}</td>
+        <td *ngIf="esGestor">
+          <div *ngIf="pedido.siguientesEstados.length > 0" class="cambio">
+            <select [(ngModel)]="objetivo[pedido.id]">
+              <option *ngFor="let est of pedido.siguientesEstados" [ngValue]="est">
+                {{ est }}
+              </option>
+            </select>
+            <button (click)="cambiarEstado(pedido)">Aplicar</button>
+          </div>
+          <span *ngIf="pedido.siguientesEstados.length === 0">Estado final</span>
+        </td>
+        <td>
+          <button (click)="toggleDetalle(pedido.id)">
+            {{ detalleId === pedido.id ? "Ocultar" : "Ver" }}
+          </button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p *ngIf="pedidos.length === 0">Todavía no hay pedidos para mostrar.</p>
+
+  <div *ngFor="let pedido of pedidos">
+    <div class="detalle" *ngIf="detalleId === pedido.id">
+      <h4>Pedido #{{ pedido.id }} — {{ pedido.creadoEn | date: "medium" }}</h4>
+      <table>
+        <thead>
+          <tr>
+            <th>Producto</th>
+            <th>Cantidad</th>
+            <th>Precio unitario</th>
+            <th>Subtotal</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let item of pedido.items">
+            <td>{{ item.nombreProducto }}</td>
+            <td>{{ item.cantidad }}</td>
+            <td>{{ item.precioUnitario | currency }}</td>
+            <td>{{ item.subtotal | currency }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
