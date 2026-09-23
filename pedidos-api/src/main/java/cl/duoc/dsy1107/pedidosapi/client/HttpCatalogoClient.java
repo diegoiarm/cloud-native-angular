@@ -3,6 +3,7 @@ package cl.duoc.dsy1107.pedidosapi.client;
 import cl.duoc.dsy1107.pedidosapi.exception.CatalogoNoDisponibleException;
 import cl.duoc.dsy1107.pedidosapi.exception.ProductoNoEncontradoException;
 import cl.duoc.dsy1107.pedidosapi.exception.StockInsuficienteException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -62,7 +63,7 @@ public class HttpCatalogoClient implements CatalogoClient {
                     .toBodilessEntity();
         } catch (HttpClientErrorException e) {
             if (e.getStatusCode().isSameCodeAs(HttpStatus.CONFLICT)) {
-                throw new StockInsuficienteException(e.getResponseBodyAsString());
+                throw new StockInsuficienteException(detalle(e.getResponseBodyAsString()));
             }
             if (e.getStatusCode().isSameCodeAs(HttpStatus.NOT_FOUND)) {
                 throw new ProductoNoEncontradoException(null);
@@ -70,6 +71,19 @@ public class HttpCatalogoClient implements CatalogoClient {
             throw new CatalogoNoDisponibleException(e);
         } catch (RestClientException e) {
             throw new CatalogoNoDisponibleException(e);
+        }
+    }
+
+    // catalogo-api responde {"status":409,"mensaje":"Stock insuficiente para ..."}.
+    private static String detalle(String cuerpo) {
+        if (cuerpo == null || cuerpo.isBlank()) {
+            return null;
+        }
+        try {
+            var nodo = new ObjectMapper().readTree(cuerpo).get("mensaje");
+            return nodo == null ? cuerpo : nodo.asText();
+        } catch (Exception e) {
+            return cuerpo;
         }
     }
 

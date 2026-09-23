@@ -38,6 +38,8 @@ export class Catalog implements OnInit {
 
   error = '';
   mensaje = '';
+  cargando = true;
+  guardando = false;
 
   constructor(
     private http: HttpClient,
@@ -61,14 +63,18 @@ export class Catalog implements OnInit {
   }
 
   cargar(): void {
+    this.cargando = true;
     this.http.get<Producto[]>(`${environment.catalogoBaseUrl}/api/catalog/products`)
       .subscribe({
         next: (productos) => {
           this.productos = productos;
+          this.cargando = false;
           this.cdr.markForCheck();
         },
         error: (err) => {
           this.error = mensajeError(err);
+          this.cargando = false;
+          this.cdr.markForCheck();
         }
       });
   }
@@ -105,8 +111,10 @@ export class Catalog implements OnInit {
           body
         );
 
+    this.guardando = true;
     peticion.subscribe({
       next: () => {
+        this.guardando = false;
         this.mensaje = 'Producto guardado correctamente.';
         this.error = '';
         this.nuevo();
@@ -114,7 +122,9 @@ export class Catalog implements OnInit {
         this.cdr.markForCheck();
       },
       error: (err) => {
+        this.guardando = false;
         this.error = mensajeError(err);
+        this.cdr.markForCheck();
       }
     });
   }

@@ -1,26 +1,22 @@
-.panel {
-  max-width: 520px;
+.acceso {
+  max-width: 460px;
   margin: 48px auto;
-  padding: 32px;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
   text-align: center;
 }
 
-.panel button,
-.panel a {
+.acceso .subtitulo {
+  margin-bottom: 24px;
+}
+
+.acceso .btn {
   display: inline-block;
-  margin-top: 16px;
-  padding: 10px 18px;
-  background: #2563eb;
-  color: #fff;
-  border: none;
-  border-radius: 4px;
   text-decoration: none;
 }
 
-.panel .ayuda {
-  margin-top: 24px;
+.ayuda {
+  margin: 24px 0 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--borde);
   font-size: 13px;
-  color: #64748b;
+  color: var(--texto-suave);
 }

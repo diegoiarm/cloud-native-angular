@@ -33,6 +33,8 @@ export class Orders implements OnInit {
 
   error = "";
   mensaje = "";
+  cargando = true;
+  enviando = false;
 
   constructor(
     private http: HttpClient,
@@ -72,17 +74,24 @@ export class Orders implements OnInit {
   }
 
   cargar(): void {
+    this.cargando = true;
     this.http.get<Pedido[]>(`${environment.apiBaseUrl}/api/orders`).subscribe({
       next: (pedidos) => {
         this.pedidos = pedidos;
         this.error = "";
+        this.cargando = false;
         this.cdr.markForCheck();
       },
       error: (err) => {
         this.error = mensajeError(err);
+        this.cargando = false;
         this.cdr.markForCheck();
       },
     });
+  }
+
+  claseEstado(estado: string): string {
+    return "estado--" + estado.toLowerCase();
   }
 
   agregarLinea(): void {
@@ -92,6 +101,16 @@ export class Orders implements OnInit {
     if (!producto) {
       return;
     }
+    // Aviso temprano; el catálogo vuelve a validar el stock al aceptar el pedido.
+    const yaPedido = this.lineas
+      .filter((l) => l.productoId === producto.id)
+      .reduce((total, l) => total + l.cantidad, 0);
+    if (yaPedido + this.nuevoCantidad > producto.stock) {
+      this.error = `Solo hay ${producto.stock} unidades de ${producto.nombre} en stock.`;
+      this.mensaje = "";
+      return;
+    }
+    this.error = "";
     this.lineas.push({
       productoId: producto.id,
       cantidad: this.nuevoCantidad,
@@ -119,10 +138,12 @@ export class Orders implements OnInit {
         cantidad: l.cantidad,
       })),
     };
+    this.enviando = true;
     this.http
       .post<Pedido>(`${environment.apiBaseUrl}/api/orders`, body)
       .subscribe({
         next: (pedido) => {
+          this.enviando = false;
           this.lineas = [];
           this.mensaje = `Pedido #${pedido.id} creado correctamente.`;
           this.error = "";
@@ -130,6 +151,7 @@ export class Orders implements OnInit {
           this.cdr.markForCheck();
         },
         error: (err) => {
+          this.enviando = false;
           this.error = mensajeError(err);
           this.mensaje = "";
           this.cdr.markForCheck();

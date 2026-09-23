@@ -89,6 +89,6 @@ export class Dashboard implements OnInit {
     if (this.roles.includes('Operador')) {
       return 'Operador';
     }
-    return 'Cliente';
+    return this.roles.includes('Cliente') ? 'Cliente' : 'Sin rol';
   }
 }
