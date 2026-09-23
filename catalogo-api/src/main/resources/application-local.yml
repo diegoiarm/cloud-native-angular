@@ -1,0 +1,16 @@
+# Perfil de desarrollo local: H2 en archivo, sin necesidad de PostgreSQL.
+# Uso: mvnw spring-boot:run -Dspring-boot.run.profiles=local
+# La entrega sigue usando el perfil por defecto (PostgreSQL/RDS).
+spring:
+  datasource:
+    url: jdbc:h2:file:./data/catalogodb;AUTO_SERVER=TRUE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+  h2:
+    console:
+      enabled: true

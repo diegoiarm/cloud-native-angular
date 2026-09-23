@@ -1,21 +1,31 @@
 export function mensajeError(error: any): string {
   const cuerpo = error?.error;
-  if (cuerpo) {
-    if (typeof cuerpo === 'string' && cuerpo.trim()) {
-      return cuerpo;
-    }
-    if (cuerpo.message) {
-      return cuerpo.message;
-    }
-    if (cuerpo.error) {
-      return cuerpo.error;
-    }
+  if (typeof cuerpo === "string" && cuerpo.trim()) {
+    return cuerpo;
   }
-  if (error?.status === 401) {
-    return 'No autenticado o token inválido (401)';
+  // pedidos-api y catalogo-api entregan el detalle en "mensaje".
+  if (cuerpo?.mensaje) {
+    return cuerpo.mensaje;
   }
-  if (error?.status === 403) {
-    return 'Sin permisos para esta operación (403)';
+  if (cuerpo?.message) {
+    return cuerpo.message;
   }
-  return 'Error de conexión con la API';
+  switch (error?.status) {
+    case 0:
+      return "No se pudo contactar la API. ¿Está corriendo el servicio?";
+    case 400:
+      return "Los datos enviados no son válidos (400).";
+    case 401:
+      return "No autenticado o token inválido (401).";
+    case 403:
+      return "Tu rol no tiene permiso para esta operación (403).";
+    case 404:
+      return "No se encontró el recurso solicitado (404).";
+    case 409:
+      return "La operación no es posible en el estado actual del pedido (409).";
+    case 503:
+      return "El servicio de catálogo no está disponible (503).";
+    default:
+      return `Error inesperado de la API (${error?.status ?? "sin código"}).`;
+  }
 }

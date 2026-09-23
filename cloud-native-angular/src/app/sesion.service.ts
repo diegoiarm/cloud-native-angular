@@ -64,4 +64,19 @@ export class SesionService {
     this.rolesCache = roles;
     return roles;
   }
+
+  // Un usuario podría tener varios App Roles; se muestra el de mayor alcance.
+  async obtenerRolPrincipal(): Promise<string> {
+    const roles = await this.obtenerRoles();
+    if (roles.includes('Admin')) {
+      return 'Admin';
+    }
+    if (roles.includes('Operador')) {
+      return 'Operador';
+    }
+    if (roles.includes('Cliente')) {
+      return 'Cliente';
+    }
+    return 'Sin rol';
+  }
 }

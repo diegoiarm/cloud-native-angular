@@ -1,49 +1,133 @@
-.panel {
-  margin: 32px auto;
-  max-width: 760px;
+.advertencia {
+  display: block;
+  margin-top: 6px;
+  color: #b45309;
+  font-size: 13px;
 }
 
 .tarjetas {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 16px;
-  margin: 20px 0;
+  margin-bottom: 20px;
 }
 
 .tarjeta {
-  flex: 1;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   padding: 20px;
-  text-align: center;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  background: #f8fafc;
+  animation: aparecer 0.3s ease-out both;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.tarjeta:nth-child(2) {
+  animation-delay: 0.08s;
+}
+
+.tarjeta:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--sombra-alta);
 }
 
 .tarjeta strong {
-  display: block;
   font-size: 32px;
-  color: #2563eb;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
 }
 
 .tarjeta span {
-  color: #64748b;
+  font-size: 13px;
+  color: var(--texto-suave);
 }
 
 .acciones {
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
 }
 
-.acciones a {
-  padding: 8px 16px;
-  background: #2563eb;
-  color: #fff;
-  border-radius: 4px;
+.acciones .btn {
   text-decoration: none;
 }
 
-pre {
+.acciones .secundario-enlace {
+  background: var(--superficie);
+  color: var(--texto);
+  border: 1px solid var(--borde-fuerte);
+}
+
+.acciones .secundario-enlace:hover {
+  background: #f1f5f9;
+}
+
+.claims {
+  margin-top: 20px;
+  animation: aparecer 0.2s ease-out;
+}
+
+.token {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 16px;
+}
+
+.token span {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--texto-suave);
+}
+
+.token code,
+.claims pre {
+  display: block;
   background: #0f172a;
   color: #e2e8f0;
+  border-radius: 8px;
   padding: 12px;
-  border-radius: 6px;
-  overflow: auto;
+  font-size: 12px;
+  overflow-x: auto;
+  word-break: break-all;
+}
+
+dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+  margin: 0 0 16px;
+}
+
+dl div {
+  border: 1px solid var(--borde);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #f8fafc;
+}
+
+dt {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--texto-suave);
+}
+
+dd {
+  margin: 2px 0 0;
+  font-size: 14px;
+  word-break: break-word;
+}
+
+summary {
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--primario);
 }

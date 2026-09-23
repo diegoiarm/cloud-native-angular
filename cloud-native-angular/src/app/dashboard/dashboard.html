@@ -1,14 +1,18 @@
 <section class="panel">
   <h2>Dashboard</h2>
-
-  <p>
-    Usuario autenticado con rol <strong>{{ rol }}</strong>.
+  <p class="subtitulo">
+    Sesión activa con rol <strong>{{ rol }}</strong>.
+    <span *ngIf="rol === 'Sin rol'" class="advertencia">
+      Sin un App Role asignado en Entra ID, la API responderá 403.
+    </span>
   </p>
 
   <div class="tarjetas">
     <div class="tarjeta">
       <strong>{{ pedidosCount }}</strong>
-      <span>Pedidos visible según tu rol</span>
+      <span>{{
+        rol === "Cliente" ? "Tus pedidos" : "Pedidos en el sistema"
+      }}</span>
     </div>
     <div class="tarjeta">
       <strong>{{ productosCount }}</strong>
@@ -17,40 +21,52 @@
   </div>
 
   <div class="acciones">
-    <a routerLink="/orders">Gestionar pedidos</a>
-    <a routerLink="/catalog">Ver catálogo</a>
+    <a class="btn" routerLink="/orders">Gestionar pedidos</a>
+    <a class="btn secundario-enlace" routerLink="/catalog">Ver catálogo</a>
   </div>
+</section>
 
-  <hr>
-
-  <h3>Evidencia de tokens y claims</h3>
-  <button (click)="verToken()">
-    Obtener Access Token y mostrar claims
-  </button>
-
-  <p *ngIf="accessTokenPreview">
-    <strong>Access Token:</strong><br>
-    {{ accessTokenPreview }}
+<section class="panel">
+  <h3>Access Token</h3>
+  <p class="subtitulo">
+    Evidencia de la autenticación: audiencia, scope, roles y vigencia del token que
+    Angular envía a las APIs.
   </p>
 
-  <details *ngIf="mostrarApi" open>
-    <summary>Claims del Access Token (aud, scp/roles, iss, exp)</summary>
-    <p><strong>aud:</strong> {{ accessTokenClaims?.aud }}</p>
-    <p><strong>scp:</strong> {{ accessTokenClaims?.scp }}</p>
-    <p>
-      <strong>roles:</strong>
-      {{ accessTokenClaims?.roles || 'sin roles' }}
+  <button type="button" (click)="verToken()">Mostrar claims del token</button>
+
+  <div *ngIf="mostrarApi" class="claims">
+    <p *ngIf="accessTokenPreview" class="token">
+      <span>Token</span>
+      <code>{{ accessTokenPreview }}</code>
     </p>
-    <p><strong>iss:</strong> {{ accessTokenClaims?.iss }}</p>
-    <p>
-      <strong>exp:</strong>
-      {{ accessTokenClaims?.exp }}
-      ({{
-        accessTokenClaims?.exp
-          ? (accessTokenClaims.exp * 1000 | date: 'medium')
-          : ''
-      }})
-    </p>
-    <pre>{{ accessTokenClaims | json }}</pre>
-  </details>
+
+    <dl *ngIf="accessTokenClaims">
+      <div>
+        <dt>aud</dt>
+        <dd>{{ accessTokenClaims.aud }}</dd>
+      </div>
+      <div>
+        <dt>scp</dt>
+        <dd>{{ accessTokenClaims.scp }}</dd>
+      </div>
+      <div>
+        <dt>roles</dt>
+        <dd>{{ accessTokenClaims.roles?.join(", ") || "sin roles" }}</dd>
+      </div>
+      <div>
+        <dt>iss</dt>
+        <dd>{{ accessTokenClaims.iss }}</dd>
+      </div>
+      <div>
+        <dt>exp</dt>
+        <dd>{{ accessTokenClaims.exp * 1000 | date: "medium" }}</dd>
+      </div>
+    </dl>
+
+    <details *ngIf="accessTokenClaims">
+      <summary>Ver todos los claims</summary>
+      <pre>{{ accessTokenClaims | json }}</pre>
+    </details>
+  </div>
 </section>

@@ -1,24 +1,21 @@
-<section class="panel">
+<section class="panel acceso">
   <h2>Pedidos360</h2>
+  <p class="subtitulo">Gestión de pedidos y catálogo</p>
 
-  <p *ngIf="!user">
-    Inicia sesión con tu cuenta de Microsoft
-    para acceder a la gestión de pedidos.
-  </p>
+  <ng-container *ngIf="!user">
+    <p>Inicia sesión con tu cuenta de Microsoft para continuar.</p>
+    <button type="button" (click)="login()">Iniciar sesión con Microsoft</button>
+  </ng-container>
 
-  <p *ngIf="user">
-    Sesión iniciada como <strong>{{ user.name }}</strong>.
-  </p>
-
-  <button *ngIf="!user" (click)="login()">
-    Iniciar sesión con Microsoft
-  </button>
-
-  <div *ngIf="user">
-    <a routerLink="/dashboard">Ir al dashboard</a>
-  </div>
+  <ng-container *ngIf="user">
+    <p>
+      Sesión iniciada como <strong>{{ user.name }}</strong>.
+    </p>
+    <a class="btn" routerLink="/dashboard">Ir al dashboard</a>
+  </ng-container>
 
   <p class="ayuda">
-    Rutas protegidas con MSAL: /dashboard, /orders y /catalog
+    Las secciones Dashboard, Pedidos y Catálogo requieren sesión activa. Lo que puedes
+    hacer en cada una depende del rol asignado en Microsoft Entra ID.
   </p>
 </section>

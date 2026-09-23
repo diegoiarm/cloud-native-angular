@@ -1,47 +1,76 @@
 <section class="panel">
+  <h2>Catálogo</h2>
+  <p class="subtitulo">
+    {{
+      esAdmin
+        ? "Puedes crear productos y mantener precio y stock."
+        : "Consulta de productos, precios y stock disponible."
+    }}
+  </p>
 
-  <h2>Catálogo de Productos</h2>
+  <p *ngIf="mensaje" class="aviso ok" role="status">{{ mensaje }}</p>
+  <p *ngIf="error" class="aviso err" role="alert">{{ error }}</p>
 
-  <p *ngIf="mensaje" class="ok">{{ mensaje }}</p>
-  <p *ngIf="error" class="err">{{ error }}</p>
+  <div class="columnas">
+    <div>
+      <p *ngIf="cargando" class="vacio">Cargando productos…</p>
 
-  <table>
-    <thead>
-      <tr>
-        <th>Producto</th>
-        <th>Precio</th>
-        <th>Stock</th>
-        <th *ngIf="esAdmin">Acciones</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr *ngFor="let producto of productos">
-        <td>{{ producto.nombre }}</td>
-        <td>{{ producto.precio | currency }}</td>
-        <td>{{ producto.stock }}</td>
-        <td *ngIf="esAdmin">
-          <button (click)="editar(producto)">Editar</button>
-        </td>
-      </tr>
-    </tbody>
-  </table>
+      <p *ngIf="!cargando && productos.length === 0" class="vacio">
+        El catálogo está vacío.
+      </p>
 
-  <div *ngIf="esAdmin" class="formulario">
-    <h3>{{ form.id ? 'Editar producto' : 'Nuevo producto' }}</h3>
-    <label>
-      Nombre
-      <input type="text" [(ngModel)]="form.nombre">
-    </label>
-    <label>
-      Precio
-      <input type="number" min="0" [(ngModel)]="form.precio">
-    </label>
-    <label>
-      Stock
-      <input type="number" min="0" [(ngModel)]="form.stock">
-    </label>
-    <button (click)="guardar()">{{ form.id ? 'Guardar cambios' : 'Crear' }}</button>
-    <button (click)="nuevo()">Limpiar</button>
+      <div class="tabla-scroll" *ngIf="!cargando && productos.length > 0">
+        <table>
+          <thead>
+            <tr>
+              <th>Producto</th>
+              <th class="numero">Precio</th>
+              <th class="numero">Stock</th>
+              <th *ngIf="esAdmin"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let producto of productos">
+              <td>{{ producto.nombre }}</td>
+              <td class="numero">
+                {{ producto.precio | currency: "CLP" : "symbol-narrow" : "1.0-0" }}
+              </td>
+              <td class="numero">
+                <span class="stock" [class.agotado]="producto.stock === 0">
+                  {{ producto.stock }}
+                </span>
+              </td>
+              <td *ngIf="esAdmin">
+                <button type="button" class="enlace" (click)="editar(producto)">
+                  Editar
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <aside *ngIf="esAdmin" class="formulario">
+      <h3>{{ form.id ? "Editar producto" : "Nuevo producto" }}</h3>
+
+      <label for="nombre">Nombre</label>
+      <input id="nombre" type="text" [(ngModel)]="form.nombre" />
+
+      <label for="precio">Precio</label>
+      <input id="precio" type="number" min="1" [(ngModel)]="form.precio" />
+
+      <label for="stock">Stock</label>
+      <input id="stock" type="number" min="0" [(ngModel)]="form.stock" />
+
+      <div class="botones">
+        <button type="button" (click)="guardar()" [disabled]="guardando">
+          {{ guardando ? "Guardando…" : form.id ? "Guardar cambios" : "Crear producto" }}
+        </button>
+        <button type="button" class="secundario" (click)="nuevo()">
+          {{ form.id ? "Cancelar" : "Limpiar" }}
+        </button>
+      </div>
+    </aside>
   </div>
-
 </section>

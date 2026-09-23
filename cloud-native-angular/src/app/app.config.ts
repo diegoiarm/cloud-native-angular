@@ -1,4 +1,6 @@
-import { ApplicationConfig } from "@angular/core";
+import { DEFAULT_CURRENCY_CODE, LOCALE_ID, ApplicationConfig } from "@angular/core";
+import { registerLocaleData } from "@angular/common";
+import localeEsCL from "@angular/common/locales/es-CL";
 import {
   HTTP_INTERCEPTORS,
   provideHttpClient,
@@ -20,9 +22,14 @@ import {
   MSALInstanceFactory,
   MSALInterceptorConfigFactory,
 } from "./msal-config";
+// Montos en pesos chilenos: separador de miles "." y sin decimales.
+registerLocaleData(localeEsCL);
+
 export const appConfig: ApplicationConfig = {
   providers: [
     provideRouter(routes),
+    { provide: LOCALE_ID, useValue: "es-CL" },
+    { provide: DEFAULT_CURRENCY_CODE, useValue: "CLP" },
     provideHttpClient(withInterceptorsFromDi()),
     {
       provide: MSAL_INSTANCE,

@@ -41,6 +41,8 @@ export class App implements OnInit, OnDestroy {
 
   user: AccountInfo | null = null;
 
+  rol = '';
+
   private readonly destroying$ = new Subject<void>();
 
   constructor(
@@ -77,6 +79,15 @@ export class App implements OnInit, OnDestroy {
       .subscribe(() => {
         this.user = this.sesion.getUsuario();
         this.cdr.markForCheck();
+
+        if (this.user) {
+          this.sesion.obtenerRolPrincipal().then((rol) => {
+            this.rol = rol;
+            this.cdr.markForCheck();
+          });
+        } else {
+          this.rol = '';
+        }
       });
   }
 
