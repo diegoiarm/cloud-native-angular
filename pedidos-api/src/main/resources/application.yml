@@ -5,7 +5,7 @@ spring:
   application:
     name: pedidos-api
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:5432/${DB_NAME:pedidosdb}
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:pedidosdb}
     username: ${DB_USER:postgres}
     password: ${DB_PASSWORD}
   jpa:
@@ -17,13 +17,17 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: https://login.microsoftonline.com/6bf42f50-ccc9-46e4-ae46-2b6534675957/v2.0
-          jwk-set-uri: https://login.microsoftonline.com/6bf42f50-ccc9-46e4-ae46-2b6534675957/discovery/v2.0/keys
+          issuer-uri: https://login.microsoftonline.com/${ENTRA_TENANT_ID:6bf42f50-ccc9-46e4-ae46-2b6534675957}/v2.0
+          jwk-set-uri: https://login.microsoftonline.com/${ENTRA_TENANT_ID:6bf42f50-ccc9-46e4-ae46-2b6534675957}/discovery/v2.0/keys
           # Solo se aceptan tokens emitidos para la API (App_DSY1107_API).
           audiences:
-            - 371e0368-c37d-4768-9266-0212824e67ba
-            - api://371e0368-c37d-4768-9266-0212824e67ba
+            - ${ENTRA_API_CLIENT_ID:371e0368-c37d-4768-9266-0212824e67ba}
+            - api://${ENTRA_API_CLIENT_ID:371e0368-c37d-4768-9266-0212824e67ba}
 
 # Microservicio de catálogo (precios y stock). Pedidos lo llama reenviando el token del usuario.
 catalogo:
   url: ${CATALOGO_URL:http://localhost:8081}
+
+# Orígenes permitidos por CORS, separados por coma.
+cors:
+  allowed-origins: ${CORS_ORIGINS:http://localhost:4200}

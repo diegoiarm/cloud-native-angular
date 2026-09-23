@@ -1,6 +1,8 @@
 package cl.duoc.dsy1107.pedidosapi.config;
 
+import java.util.Arrays;
 import java.util.List;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -37,7 +39,8 @@ public class SecurityConfig {
                         // Toda la API de pedidos exige el scope delegado;
                         // los roles por operación se validan con @PreAuthorize en el controller.
                         .requestMatchers(
-                                "/api/orders/**")
+                                "/api/orders/**",
+                                "/api/pedidos")
                         .hasAuthority(
                                 "SCOPE_Pedidos.Read")
                         .anyRequest()
@@ -57,12 +60,18 @@ public class SecurityConfig {
         return converter;
     }
 
+    // Orígenes permitidos: en la nube se define CORS_ORIGINS con el dominio del frontend.
+    @Value("${cors.allowed-origins:http://localhost:4200}")
+    private String origenesPermitidos;
+
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(
-                List.of(
-                        "http://localhost:4200"));
+                Arrays.stream(origenesPermitidos.split(","))
+                        .map(String::trim)
+                        .filter(origen -> !origen.isEmpty())
+                        .toList());
         config.setAllowedMethods(
                 List.of(
                         "GET",

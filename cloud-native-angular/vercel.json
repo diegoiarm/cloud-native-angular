@@ -1,0 +1,5 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist/dsy1107-msal-angular/browser",
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+}

@@ -124,6 +124,26 @@ paths:
         uri: "http://TU-EC2-DNS:8080/api/orders/{id}/status"
         payloadFormatVersion: "1.0"
 
+  # Alias de compatibilidad con la guía del curso (mismo listado que /api/orders).
+  /api/pedidos:
+    get:
+      summary: Lista pedidos (alias de /api/orders)
+      security:
+        - EntraJwtAuthorizer:
+            - Pedidos.Read
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Sin token o token inválido
+        "403":
+          description: Sin scope Pedidos.Read o sin App Role (Spring)
+      x-amazon-apigateway-integration:
+        type: http_proxy
+        httpMethod: GET
+        uri: "http://TU-EC2-DNS:8080/api/pedidos"
+        payloadFormatVersion: "1.0"
+
   # ---- catalogo-api (EC2, puerto 8081) ----
   /api/catalog/products:
     get:

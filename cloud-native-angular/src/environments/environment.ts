@@ -9,6 +9,7 @@ export const environment = {
   },
 
   // En local cada microservicio corre en su propio puerto.
+  // Para probar contra AWS, reemplazar ambas por la Invoke URL del API Gateway.
   apiBaseUrl: "http://localhost:8080",
   catalogoBaseUrl: "http://localhost:8081",
 };
