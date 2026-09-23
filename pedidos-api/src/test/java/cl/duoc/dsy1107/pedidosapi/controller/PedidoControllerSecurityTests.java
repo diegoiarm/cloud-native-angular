@@ -48,6 +48,22 @@ class PedidoControllerSecurityTests {
     }
 
     @Test
+    void aliasPedidosSinTokenDevuelve401() throws Exception {
+        mockMvc.perform(get("/api/pedidos"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void aliasPedidosConScopeYRolDevuelve200() throws Exception {
+        // Ruta de compatibilidad con la guía del curso: mismo listado que /api/orders.
+        mockMvc.perform(get("/api/pedidos")
+                        .with(jwt().jwt(j -> j.claim("scp", "Pedidos.Read")
+                                        .claim("roles", List.of("Operador")))
+                                .authorities(new JwtAuthorityConverter())))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void meConvierteScpYRolesDesdeLosClaims() throws Exception {
         // Usa el converter real para verificar el mapeo de claims de Entra ID.
         mockMvc.perform(get("/api/me")

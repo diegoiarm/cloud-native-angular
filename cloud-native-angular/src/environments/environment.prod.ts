@@ -1,5 +1,5 @@
-// Configuración de producción (ng build). Reemplazar los valores TU-...
-// por el dominio real del frontend y la URL pública de AWS API Gateway.
+// Configuración de producción (ng build). El dominio de Vercel debe estar además
+// registrado como Redirect URI (SPA) en la App Registration del frontend.
 export const environment = {
   production: true,
   msal: {
@@ -10,7 +10,7 @@ export const environment = {
     apiScope: "api://371e0368-c37d-4768-9266-0212824e67ba/Pedidos.Read",
   },
 
-  // En producción ambos microservicios se publican tras el mismo API Gateway.
-  apiBaseUrl: "https://TU-API-ID.execute-api.us-east-1.amazonaws.com/prod",
-  catalogoBaseUrl: "https://TU-API-ID.execute-api.us-east-1.amazonaws.com/prod",
+  // Ambos microservicios se publican tras el mismo API Gateway.
+  apiBaseUrl: "https://vfohqq8qme.execute-api.us-east-1.amazonaws.com",
+  catalogoBaseUrl: "https://vfohqq8qme.execute-api.us-east-1.amazonaws.com",
 };

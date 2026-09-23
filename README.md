@@ -83,6 +83,7 @@ curl -i http://localhost:8081/api/catalog/products # 401 sin token
 | GET | `/api/publico` | público |
 | GET | `/api/me` | cualquier usuario autenticado |
 | GET | `/api/orders` | Cliente ve los suyos; Operador y Admin ven todos |
+| GET | `/api/pedidos` | Alias del listado, para la checklist de la guía del curso |
 | GET | `/api/orders/{id}` | igual que el listado |
 | POST | `/api/orders` | Cliente, Operador |
 | PUT | `/api/orders/{id}/status` | Operador, Admin |
@@ -109,7 +110,7 @@ desde los tres primeros.
 ## Pruebas
 
 ```bash
-cd pedidos-api  && mvn test      # 23 tests
+cd pedidos-api  && mvn test      # 25 tests
 cd catalogo-api && mvn test      # 14 tests
 cd cloud-native-angular && npm test
 ```
