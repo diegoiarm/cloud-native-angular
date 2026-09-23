@@ -7,7 +7,7 @@ import {
   OnInit
 } from '@angular/core';
 
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { RouterLink } from '@angular/router';
 
 import {
   MsalBroadcastService,
@@ -16,7 +16,6 @@ import {
 
 import {
   AccountInfo,
-  AuthenticationResult,
   InteractionStatus
 } from '@azure/msal-browser';
 
@@ -24,20 +23,15 @@ import { Subject } from 'rxjs';
 
 import { filter, takeUntil } from 'rxjs/operators';
 
-import { SesionService } from './sesion.service';
+import { SesionService } from '../sesion.service';
 
 @Component({
-  selector: 'app-root',
-  imports: [
-    CommonModule,
-    RouterLink,
-    RouterLinkActive,
-    RouterOutlet
-  ],
-  templateUrl: './app.html',
-  styleUrl: './app.css'
+  selector: 'app-login',
+  imports: [CommonModule, RouterLink],
+  templateUrl: './login.html',
+  styleUrl: './login.css'
 })
-export class App implements OnInit, OnDestroy {
+export class Login implements OnInit, OnDestroy {
 
   user: AccountInfo | null = null;
 
@@ -51,22 +45,6 @@ export class App implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    this.authService
-      .handleRedirectObservable({
-        navigateToLoginRequestUrl: false
-      })
-      .subscribe({
-        next: (result: AuthenticationResult | null) => {
-          if (result?.account) {
-            this.authService.instance
-              .setActiveAccount(result.account);
-          }
-        },
-        error: (error) => {
-          console.error('Error MSAL:', error);
-        }
-      });
-
     this.msalBroadcastService
       .inProgress$
       .pipe(
@@ -78,6 +56,10 @@ export class App implements OnInit, OnDestroy {
         this.user = this.sesion.getUsuario();
         this.cdr.markForCheck();
       });
+  }
+
+  login(): void {
+    this.sesion.iniciarSesion();
   }
 
   logout(): void {

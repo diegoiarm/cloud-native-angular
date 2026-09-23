@@ -1,53 +1,20 @@
-<main class="contenedor">
-  <h1>DSY1107 - MSAL + Angular</h1>
-  <section *ngIf="!user">
-    <p>Usuario no autenticado.</p>
-    <button (click)="login()">Iniciar sesión con Microsoft</button>
-  </section>
-  <section *ngIf="user">
-    <h2>Sesión iniciada correctamente</h2>
-    <p>
-      <strong>Nombre:</strong>
-      {{ user.name }}
-    </p>
-    <p>
-      <strong>Cuenta:</strong>
-      {{ user.username }}
-    </p>
-    <p>
-      <strong>Tenant:</strong>
-      {{ user.tenantId }}
-    </p>
-    <button (click)="obtenerAccessToken()">Obtener Access Token</button>
-    <p *ngIf="accessTokenPreview">
-      <strong> Access Token: </strong>
-      <br />
-      {{ accessTokenPreview }}
-    </p>
-    <button *ngIf="accessToken" (click)="copiarAccessToken()">
-      Copiar Access Token completo
-    </button>
-    <section *ngIf="accessTokenClaims">
-      <h3>Claims del Access Token</h3>
-      <p><strong>roles:</strong> {{ accessTokenClaims.roles?.join(", ") || "sin roles" }}</p>
-      <p><strong>scp:</strong> {{ accessTokenClaims.scp }}</p>
-      <p><strong>aud:</strong> {{ accessTokenClaims.aud }}</p>
-      <p><strong>iss:</strong> {{ accessTokenClaims.iss }}</p>
-      <p>
-        <strong>exp:</strong>
-        {{ accessTokenClaims.exp * 1000 | date: "medium" }}
-      </p>
-      <details>
-        <summary>Ver todos los claims</summary>
-        <pre>{{ accessTokenClaims | json }}</pre>
-      </details>
-    </section>
-    <p>
-      <a routerLink="/protegido"> Ir a ruta protegida </a>
-    </p>
-    <button (click)="consultarPedidos()">Consultar API protegida</button>
-    <pre *ngIf="respuestaApi">{{ respuestaApi | json }}</pre>
+<header class="barra">
+  <div class="marca">Pedidos360</div>
+
+  <nav *ngIf="user">
+    <a routerLink="/dashboard" routerLinkActive="activo">Dashboard</a>
+    <a routerLink="/orders" routerLinkActive="activo">Pedidos</a>
+    <a routerLink="/catalog" routerLinkActive="activo">Catálogo</a>
+  </nav>
+
+  <div class="usuario" *ngIf="user">
+    <span>{{ user.name }}</span>
     <button (click)="logout()">Cerrar sesión</button>
-  </section>
-  <router-outlet> </router-outlet>
+  </div>
+
+  <a *ngIf="!user" routerLink="/login">Iniciar sesión</a>
+</header>
+
+<main class="contenedor">
+  <router-outlet></router-outlet>
 </main>

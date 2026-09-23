@@ -222,6 +222,6 @@ components:
         type: jwt
         identitySource: "$request.header.Authorization"
         jwtConfiguration:
-          issuer: "https://login.microsoftonline.com/413875c7-b2d6-4bc6-93ee-071e4f43a25e/v2.0"
+          issuer: "https://login.microsoftonline.com/6bf42f50-ccc9-46e4-ae46-2b6534675957/v2.0"
           audience:
-            - "fe49fbff-96c3-4146-b54e-a81b1d2a2379"
+            - "371e0368-c37d-4768-9266-0212824e67ba"

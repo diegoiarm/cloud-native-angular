@@ -1,0 +1,24 @@
+<section class="panel">
+  <h2>Pedidos360</h2>
+
+  <p *ngIf="!user">
+    Inicia sesión con tu cuenta de Microsoft
+    para acceder a la gestión de pedidos.
+  </p>
+
+  <p *ngIf="user">
+    Sesión iniciada como <strong>{{ user.name }}</strong>.
+  </p>
+
+  <button *ngIf="!user" (click)="login()">
+    Iniciar sesión con Microsoft
+  </button>
+
+  <div *ngIf="user">
+    <a routerLink="/dashboard">Ir al dashboard</a>
+  </div>
+
+  <p class="ayuda">
+    Rutas protegidas con MSAL: /dashboard, /orders y /catalog
+  </p>
+</section>

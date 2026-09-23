@@ -1,0 +1,56 @@
+<section class="panel">
+  <h2>Dashboard</h2>
+
+  <p>
+    Usuario autenticado con rol <strong>{{ rol }}</strong>.
+  </p>
+
+  <div class="tarjetas">
+    <div class="tarjeta">
+      <strong>{{ pedidosCount }}</strong>
+      <span>Pedidos visible según tu rol</span>
+    </div>
+    <div class="tarjeta">
+      <strong>{{ productosCount }}</strong>
+      <span>Productos en catálogo</span>
+    </div>
+  </div>
+
+  <div class="acciones">
+    <a routerLink="/orders">Gestionar pedidos</a>
+    <a routerLink="/catalog">Ver catálogo</a>
+  </div>
+
+  <hr>
+
+  <h3>Evidencia de tokens y claims</h3>
+  <button (click)="verToken()">
+    Obtener Access Token y mostrar claims
+  </button>
+
+  <p *ngIf="accessTokenPreview">
+    <strong>Access Token:</strong><br>
+    {{ accessTokenPreview }}
+  </p>
+
+  <details *ngIf="mostrarApi" open>
+    <summary>Claims del Access Token (aud, scp/roles, iss, exp)</summary>
+    <p><strong>aud:</strong> {{ accessTokenClaims?.aud }}</p>
+    <p><strong>scp:</strong> {{ accessTokenClaims?.scp }}</p>
+    <p>
+      <strong>roles:</strong>
+      {{ accessTokenClaims?.roles || 'sin roles' }}
+    </p>
+    <p><strong>iss:</strong> {{ accessTokenClaims?.iss }}</p>
+    <p>
+      <strong>exp:</strong>
+      {{ accessTokenClaims?.exp }}
+      ({{
+        accessTokenClaims?.exp
+          ? (accessTokenClaims.exp * 1000 | date: 'medium')
+          : ''
+      }})
+    </p>
+    <pre>{{ accessTokenClaims | json }}</pre>
+  </details>
+</section>

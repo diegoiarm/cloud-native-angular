@@ -1,0 +1,49 @@
+.panel {
+  margin: 32px auto;
+  max-width: 760px;
+}
+
+.tarjetas {
+  display: flex;
+  gap: 16px;
+  margin: 20px 0;
+}
+
+.tarjeta {
+  flex: 1;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+}
+
+.tarjeta strong {
+  display: block;
+  font-size: 32px;
+  color: #2563eb;
+}
+
+.tarjeta span {
+  color: #64748b;
+}
+
+.acciones {
+  display: flex;
+  gap: 12px;
+}
+
+.acciones a {
+  padding: 8px 16px;
+  background: #2563eb;
+  color: #fff;
+  border-radius: 4px;
+  text-decoration: none;
+}
+
+pre {
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 12px;
+  border-radius: 6px;
+  overflow: auto;
+}
