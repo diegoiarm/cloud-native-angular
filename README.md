@@ -124,7 +124,7 @@ descuento de stock y el contrato HTTP entre los dos microservicios.
 2. Los dos servicios en EC2, con las variables `DB_HOST`, `DB_USER`, `DB_PASSWORD` y
    `CATALOGO_URL`.
 3. Importar `infra/api-gateway-openapi.yaml` en API Gateway como HTTP API y reemplazar
-   `TU-EC2-DNS`, `TU-EC2-CATALOGO-DNS` y `TU-DOMINIO`.
+   `TU-EC2-DNS` y `TU-EC2-CATALOGO-DNS` por la IP de la instancia.
 4. Publicar el frontend y completar `environment.prod.ts` con la URL del Gateway.
 5. Agregar el dominio de producción como redirect URI en Entra y en el CORS de los dos
    servicios, que hoy solo permiten `http://localhost:4200`.

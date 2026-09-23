@@ -18,7 +18,7 @@ ENTRA_TENANT_ID="6bf42f50-ccc9-46e4-ae46-2b6534675957"
 ENTRA_API_CLIENT_ID="371e0368-c37d-4768-9266-0212824e67ba"
 
 # Orígenes del frontend, separados por coma.
-CORS_ORIGINS="http://localhost:4200,https://TU-DOMINIO.vercel.app"
+CORS_ORIGINS="http://localhost:4200,https://cloud-native-angular.vercel.app"
 # -------------------------------------------------------------
 
 dnf -y update

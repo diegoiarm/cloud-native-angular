@@ -169,7 +169,7 @@ Abre `infra/api-gateway-openapi.yaml` y reemplaza, con Ctrl+H:
 
 - `TU-EC2-DNS` → la IP pública de la EC2
 - `TU-EC2-CATALOGO-DNS` → la misma IP (cambia solo el puerto, 8081)
-- `TU-DOMINIO.vercel.app` → si aún no publicas el frontend, déjalo como está
+- El dominio de Vercel ya viene puesto en el CORS; cámbialo solo si usas otro
 
 Guarda el archivo. **No lo subas al repo con la IP dentro**, es un valor de tu sesión.
 
