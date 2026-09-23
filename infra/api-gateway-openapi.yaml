@@ -9,7 +9,7 @@
 #   1) API Gateway -> Create API -> HTTP API -> Import -> subir este archivo.
 #   2) Reemplazar TU-EC2-DNS (pedidos-api) y TU-EC2-CATALOGO-DNS (catalogo-api)
 #      por el DNS/IP de cada instancia EC2.
-#   3) Reemplazar TU-DOMINIO en CORS por el dominio real del frontend.
+#   3) El CORS ya apunta al frontend en Vercel; ajustarlo si cambia el dominio.
 #   4) Crear el stage "prod" con auto-deploy.
 #
 # API Gateway valida firma, issuer, audience y scope; Spring Security vuelve a
@@ -24,7 +24,7 @@ info:
 x-amazon-apigateway-cors:
   allowOrigins:
     - "http://localhost:4200"
-    - "https://TU-DOMINIO.vercel.app"
+    - "https://cloud-native-angular.vercel.app"
   allowMethods:
     - GET
     - POST

@@ -5,7 +5,7 @@ export const environment = {
   msal: {
     clientId: "67e79135-0890-48e1-af3b-0a217b270cfa",
     tenantId: "6bf42f50-ccc9-46e4-ae46-2b6534675957",
-    redirectUri: "https://TU-DOMINIO.vercel.app",
+    redirectUri: "https://cloud-native-angular.vercel.app",
 
     apiScope: "api://371e0368-c37d-4768-9266-0212824e67ba/Pedidos.Read",
   },
