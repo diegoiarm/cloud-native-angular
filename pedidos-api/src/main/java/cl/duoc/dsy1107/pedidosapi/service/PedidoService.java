@@ -3,14 +3,18 @@ package cl.duoc.dsy1107.pedidosapi.service;
 import cl.duoc.dsy1107.pedidosapi.client.CatalogoClient;
 import cl.duoc.dsy1107.pedidosapi.client.MovimientoStock;
 import cl.duoc.dsy1107.pedidosapi.client.ProductoCatalogo;
+import cl.duoc.dsy1107.pedidosapi.config.RabbitMQConfig;
 import cl.duoc.dsy1107.pedidosapi.dto.CrearPedidoRequest;
 import cl.duoc.dsy1107.pedidosapi.dto.PedidoResponse;
 import cl.duoc.dsy1107.pedidosapi.exception.PedidoNoEncontradoException;
 import cl.duoc.dsy1107.pedidosapi.exception.TransicionInvalidaException;
+import cl.duoc.dsy1107.pedidosapi.mensajeria.PedidoEvento;
+import cl.duoc.dsy1107.pedidosapi.mensajeria.PedidoEventoPublisher;
 import cl.duoc.dsy1107.pedidosapi.model.EstadoPedido;
 import cl.duoc.dsy1107.pedidosapi.model.ItemPedido;
 import cl.duoc.dsy1107.pedidosapi.model.Pedido;
 import cl.duoc.dsy1107.pedidosapi.repository.PedidoRepository;
+import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,10 +24,13 @@ public class PedidoService {
 
     private final PedidoRepository repository;
     private final CatalogoClient catalogo;
+    private final PedidoEventoPublisher productor;
 
-    public PedidoService(PedidoRepository repository, CatalogoClient catalogo) {
+    public PedidoService(PedidoRepository repository, CatalogoClient catalogo,
+            PedidoEventoPublisher productor) {
         this.repository = repository;
         this.catalogo = catalogo;
+        this.productor = productor;
     }
 
     @Transactional
@@ -35,7 +42,10 @@ public class PedidoService {
             pedido.agregarItem(new ItemPedido(
                     producto.id(), producto.nombre(), item.cantidad(), producto.precio()));
         }
-        return PedidoResponse.de(repository.save(pedido));
+        Pedido guardado = repository.save(pedido);
+        // Tarea posterior: avisar al cliente. No bloquea la respuesta.
+        publicar(RabbitMQConfig.PEDIDO_CREADO, guardado);
+        return PedidoResponse.de(guardado);
     }
 
     // Cliente: solo sus pedidos. Operador y Admin: todos.
@@ -77,7 +87,25 @@ public class PedidoService {
         }
 
         pedido.setEstado(nuevo);
-        return PedidoResponse.de(repository.saveAndFlush(pedido));
+        Pedido guardado = repository.saveAndFlush(pedido);
+        // Tareas posteriores: cocina al aceptar, despacho y aviso al cliente al despachar.
+        if (nuevo == EstadoPedido.ACEPTADO) {
+            publicar(RabbitMQConfig.PEDIDO_ACEPTADO, guardado);
+        } else if (nuevo == EstadoPedido.DESPACHADO) {
+            publicar(RabbitMQConfig.PEDIDO_DESPACHADO, guardado);
+        }
+        return PedidoResponse.de(guardado);
+    }
+
+    // La operación principal ya quedó confirmada en la base de datos: el evento solo
+    // informa que ocurrió. La consistencia entre transacción y publicación se profundiza
+    // más adelante, junto con ACK/NACK, reintentos y DLQ.
+    private void publicar(String routingKey, Pedido pedido) {
+        productor.publicar(routingKey, new PedidoEvento(
+                pedido.getId(),
+                pedido.getEstado().name(),
+                pedido.getClienteNombre(),
+                LocalDateTime.now()));
     }
 
     // Un Cliente que pide un pedido ajeno recibe 404 (no se revela que existe).

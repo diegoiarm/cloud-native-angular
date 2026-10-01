@@ -13,6 +13,12 @@ spring:
       ddl-auto: update
     open-in-view: false
     show-sql: true
+  rabbitmq:
+    # Broker local de docker-compose.yml. En cloud, sobrescribir con RABBITMQ_*.
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
   security:
     oauth2:
       resourceserver:
