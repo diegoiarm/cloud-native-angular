@@ -1,10 +1,13 @@
 package cl.duoc.dsy1107.pedidosapi.controller;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
@@ -19,11 +22,14 @@ import cl.duoc.dsy1107.pedidosapi.client.MovimientoStock;
 import cl.duoc.dsy1107.pedidosapi.client.ProductoCatalogo;
 import cl.duoc.dsy1107.pedidosapi.config.JwtAuthorityConverter;
 import cl.duoc.dsy1107.pedidosapi.exception.StockInsuficienteException;
+import cl.duoc.dsy1107.pedidosapi.mensajeria.PedidoEvento;
+import cl.duoc.dsy1107.pedidosapi.mensajeria.PedidoEventoPublisher;
 import com.jayway.jsonpath.JsonPath;
 import java.math.BigDecimal;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -48,6 +54,10 @@ class PedidoFlujoTests {
     // El catálogo es otro servicio: aquí se simula su respuesta.
     @MockitoBean
     CatalogoClient catalogo;
+
+    // RabbitMQ es externo: se verifica la publicación, no el broker.
+    @MockitoBean
+    PedidoEventoPublisher productor;
 
     @BeforeEach
     void catalogoConProductos() {
@@ -178,5 +188,61 @@ class PedidoFlujoTests {
         long id = crearPedido(usuario("cli1", "Cliente"));
         cambiarEstado(id, "CANCELADO", usuario("op", "Operador")).andExpect(status().isOk());
         verify(catalogo, never()).reponerStock(any());
+    }
+
+    // Semana 08: la operación principal se confirma y luego se publica el evento.
+    @Test
+    void crearPedidoPublicaPedidoCreado() throws Exception {
+        long id = crearPedido(usuario("cli1", "Cliente"));
+
+        ArgumentCaptor<PedidoEvento> evento = ArgumentCaptor.forClass(PedidoEvento.class);
+        verify(productor).publicar(eq("pedido.creado"), evento.capture());
+        assertThat(evento.getValue().pedidoId()).isEqualTo(id);
+        assertThat(evento.getValue().estado()).isEqualTo("CREADO");
+        assertThat(evento.getValue().clienteEmail()).isEqualTo("cli1@p360.cl");
+    }
+
+    @Test
+    void aceptarPublicaPedidoAceptado() throws Exception {
+        long id = crearPedido(usuario("cli1", "Cliente"));
+        cambiarEstado(id, "ACEPTADO", usuario("op", "Operador")).andExpect(status().isOk());
+
+        verify(productor).publicar(eq("pedido.aceptado"), any(PedidoEvento.class));
+    }
+
+    @Test
+    void despacharPublicaPedidoDespachado() throws Exception {
+        long id = crearPedido(usuario("cli1", "Cliente"));
+        cambiarEstado(id, "ACEPTADO", usuario("op", "Operador")).andExpect(status().isOk());
+        cambiarEstado(id, "EN_PREPARACION", usuario("op", "Operador")).andExpect(status().isOk());
+        cambiarEstado(id, "DESPACHADO", usuario("op", "Operador")).andExpect(status().isOk());
+
+        verify(productor).publicar(eq("pedido.despachado"), any(PedidoEvento.class));
+    }
+
+    // EN_PREPARACION y CANCELADO no tienen binding: no deben publicar nada.
+    @Test
+    void estadosSinRoutingKeyNoPublicanEvento() throws Exception {
+        long id = crearPedido(usuario("cli1", "Cliente"));
+        cambiarEstado(id, "ACEPTADO", usuario("op", "Operador")).andExpect(status().isOk());
+        cambiarEstado(id, "EN_PREPARACION", usuario("op", "Operador")).andExpect(status().isOk());
+        cambiarEstado(id, "CANCELADO", usuario("adm", "Admin")).andExpect(status().isOk());
+
+        // La creación sí publicó pedido.creado; los estados intermedios no publican nada más.
+        verify(productor, times(1)).publicar(eq("pedido.creado"), any());
+        verify(productor, times(1)).publicar(eq("pedido.aceptado"), any());
+        verify(productor, never()).publicar(eq("pedido.despachado"), any());
+    }
+
+    // La validación crítica de stock sigue siendo síncrona: si falla, no se publica.
+    @Test
+    void siElStockFallaNoSePublicaElEvento() throws Exception {
+        long id = crearPedido(usuario("cli1", "Cliente"));
+        doThrow(new StockInsuficienteException("Notebook")).when(catalogo).descontarStock(anyList());
+
+        cambiarEstado(id, "ACEPTADO", usuario("op", "Operador"))
+                .andExpect(status().isConflict());
+
+        verify(productor, never()).publicar(eq("pedido.aceptado"), any());
     }
 }
