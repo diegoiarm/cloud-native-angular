@@ -1,0 +1,57 @@
+# Documento 05 - Sesion 2: RabbitMQ Cluster con Docker Compose.
+# rabbit@rabbit1 (AMQP 5672 / Management 15672) y rabbit@rabbit2 (AMQP 5673 / Management 15673).
+# Ambos nodos deben tener la MISMA Erlang Cookie y nombres distintos.
+# La cookie de este archivo es solo de laboratorio; no usarla en produccion.
+#
+#   docker compose -f infra/docker-compose.cluster.yml up -d
+#   docker compose -f infra/docker-compose.cluster.yml ps
+#
+# Solo la PRIMERA vez se une el nodo 2: infra/01_Inicializar_Cluster_Windows.ps1
+# Para comprobar sin resetear: infra/02_Verificar_Cluster_Windows.ps1
+# No dejar levantado el compose single-node (docker-compose.yml): comparte 5672/15672.
+
+services:
+  rabbit1:
+    image: rabbitmq:4.2-management
+    container_name: pedidos360-rabbit1
+    hostname: rabbit1
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: labuser
+      RABBITMQ_DEFAULT_PASS: labpass
+      RABBITMQ_ERLANG_COOKIE: Pedidos360LaboratorioCookie
+    volumes:
+      - rabbit1_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  rabbit2:
+    image: rabbitmq:4.2-management
+    container_name: pedidos360-rabbit2
+    hostname: rabbit2
+    ports:
+      - "5673:5672"
+      - "15673:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: labuser
+      RABBITMQ_DEFAULT_PASS: labpass
+      RABBITMQ_ERLANG_COOKIE: Pedidos360LaboratorioCookie
+    volumes:
+      - rabbit2_data:/var/lib/rabbitmq
+    depends_on:
+      rabbit1:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  rabbit1_data:
+  rabbit2_data:

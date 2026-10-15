@@ -1,13 +1,16 @@
+# Broker single-node de laboratorio (Semana 08/09 y pruebas locales).
+# Para el clúster de dos nodos de la Semana 10 use infra/docker-compose.cluster.yml;
+# no levantar ambos a la vez: comparten los puertos 5672 y 15672.
 services:
   rabbitmq:
     image: rabbitmq:4.2-management
-    container_name: dsy1107-rabbitmq
+    container_name: pedidos360-rabbit1
     ports:
       - "5672:5672"
       - "15672:15672"
     environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
+      RABBITMQ_DEFAULT_USER: labuser
+      RABBITMQ_DEFAULT_PASS: labpass
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     healthcheck:

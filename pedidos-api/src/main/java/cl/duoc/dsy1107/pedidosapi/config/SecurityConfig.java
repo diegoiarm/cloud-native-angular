@@ -36,11 +36,18 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/publico")
                         .permitAll()
+                        // Laboratorio 1 (documento 04): se invoca con Postman sin token.
+                        // Ruta local de laboratorio: no se publica en el API Gateway
+                        // ni se expone en la nube.
+                        .requestMatchers(
+                                "/api/lab/**")
+                        .permitAll()
                         // Toda la API de pedidos exige el scope delegado;
                         // los roles por operación se validan con @PreAuthorize en el controller.
                         .requestMatchers(
                                 "/api/orders/**",
-                                "/api/pedidos")
+                                "/api/pedidos",
+                                "/api/admin/rabbit/**")
                         .hasAuthority(
                                 "SCOPE_Pedidos.Read")
                         .anyRequest()

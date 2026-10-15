@@ -14,11 +14,18 @@ spring:
     open-in-view: false
     show-sql: true
   rabbitmq:
-    # Broker local de docker-compose.yml. En cloud, sobrescribir con RABBITMQ_*.
-    host: ${RABBITMQ_HOST:localhost}
-    port: ${RABBITMQ_PORT:5672}
-    username: ${RABBITMQ_USER:guest}
-    password: ${RABBITMQ_PASSWORD:guest}
+    # Documento 05, Paso 4: la aplicación se conecta a los dos nodos del clúster
+    # (rabbit1 en 5672 y rabbit2 en 5673). El cliente usa la primera dirección
+    # disponible, así que también sirve con el broker single-node de docker-compose.yml.
+    # En cloud se sobrescribe con RABBITMQ_ADDRESSES o con RABBITMQ_HOST/RABBITMQ_PORT.
+    addresses: ${RABBITMQ_ADDRESSES:localhost:5672,localhost:5673}
+    username: ${RABBITMQ_USER:labuser}
+    password: ${RABBITMQ_PASSWORD:labpass}
+    listener:
+      simple:
+        # Mensaje rechazado sin requeue (intentos agotados o error inesperado):
+        # el DLX de la cola principal lo conduce a la DLQ, nunca a un bucle de requeue.
+        default-requeue-rejected: false
   security:
     oauth2:
       resourceserver:
