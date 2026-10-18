@@ -31,11 +31,6 @@ public class ApiExceptionHandler {
         return error(HttpStatus.SERVICE_UNAVAILABLE, e.getMessage());
     }
 
-    @ExceptionHandler(AdminRabbitException.class)
-    ResponseEntity<Map<String, Object>> adminRabbit(AdminRabbitException e) {
-        return error(e.getStatus(), e.getMessage());
-    }
-
     @ExceptionHandler(MethodArgumentNotValidException.class)
     ResponseEntity<Map<String, Object>> invalido(MethodArgumentNotValidException e) {
         String detalle = e.getBindingResult().getFieldErrors().stream()

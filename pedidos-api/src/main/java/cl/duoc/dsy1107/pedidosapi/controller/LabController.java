@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -25,10 +26,13 @@ import org.springframework.web.bind.annotation.RestController;
  * pedido.despachado llega a notificaciones (Topic) y documentos (Direct).
  *
  * Solo sirve para el laboratorio local: la ruta queda fuera de la colección del
- * API Gateway (infra/api-gateway-openapi.yaml) y no debe exponerse en la nube.
+ * API Gateway (infra/api-gateway-openapi.yaml) y el controller solo se registra con
+ * pedidos360.lab.habilitado=true (application-local.yml). En la nube no existe, aunque
+ * el puerto 8080 de la EC2 sea alcanzable.
  */
 @RestController
 @RequestMapping("/api/lab/pedidos")
+@ConditionalOnProperty(name = "pedidos360.lab.habilitado", havingValue = "true")
 public class LabController {
 
     private final PedidoEventoPublisher productor;

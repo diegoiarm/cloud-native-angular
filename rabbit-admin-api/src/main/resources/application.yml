@@ -1,0 +1,32 @@
+server:
+  port: ${PORT:8082}
+
+spring:
+  application:
+    name: rabbit-admin-api
+  rabbitmq:
+    # Mismo broker que pedidos-api: clúster local (5672/5673) o single-node de
+    # docker-compose.yml. En cloud se sobrescribe con RABBITMQ_ADDRESSES.
+    addresses: ${RABBITMQ_ADDRESSES:localhost:5672,localhost:5673}
+    username: ${RABBITMQ_USER:labuser}
+    password: ${RABBITMQ_PASSWORD:labpass}
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: https://login.microsoftonline.com/${ENTRA_TENANT_ID:6bf42f50-ccc9-46e4-ae46-2b6534675957}/v2.0
+          jwk-set-uri: https://login.microsoftonline.com/${ENTRA_TENANT_ID:6bf42f50-ccc9-46e4-ae46-2b6534675957}/discovery/v2.0/keys
+          # Solo se aceptan tokens emitidos para la API (App_DSY1107_API).
+          audiences:
+            - ${ENTRA_API_CLIENT_ID:371e0368-c37d-4768-9266-0212824e67ba}
+            - api://${ENTRA_API_CLIENT_ID:371e0368-c37d-4768-9266-0212824e67ba}
+
+rabbit-admin:
+  # Topología que declara pedidos-api (RabbitMQConfig). El administrador no la
+  # elimina ni le cambia bindings, para no romper el flujo de pedidos.
+  topologia-protegida: >-
+    ^pedidos360\.(notificaciones|cocina|documentos)\.(queue|retry|dlq)$|^pedidos360\.(direct|topic|dlx)\.exchange$
+
+# Orígenes permitidos por CORS, separados por coma.
+cors:
+  allowed-origins: ${CORS_ORIGINS:http://localhost:4200}

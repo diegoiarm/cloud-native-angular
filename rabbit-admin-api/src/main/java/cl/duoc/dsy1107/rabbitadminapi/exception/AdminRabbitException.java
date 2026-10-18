@@ -1,10 +1,10 @@
-package cl.duoc.dsy1107.pedidosapi.exception;
+package cl.duoc.dsy1107.rabbitadminapi.exception;
 
 import org.springframework.http.HttpStatus;
 
 /**
- * Error operativo del administrador de RabbitMQ (EP4-09): el broker rechazó la
- * operación solicitada (recurso inexistente, permisos o precondición).
+ * Error operativo del administrador: el recurso no existe, está protegido o el
+ * broker rechazó la operación. Lleva el código HTTP que debe responder la API.
  */
 public class AdminRabbitException extends RuntimeException {
 

@@ -25,7 +25,7 @@ import org.springframework.test.web.servlet.MockMvc;
  * Laboratorio 1 (documento 04), Actividad B: el POST publica los dos eventos con
  * las cabeceras de fallo, sin token (ruta de laboratorio) y con validaciones.
  */
-@SpringBootTest
+@SpringBootTest(properties = "pedidos360.lab.habilitado=true")
 @AutoConfigureMockMvc
 class LabControllerTests {
 

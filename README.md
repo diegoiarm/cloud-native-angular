@@ -8,8 +8,10 @@ Monorepo con los tres componentes de la entrega.
 | `cloud-native-angular/` | Frontend Angular 21 + MSAL | 4200 |
 | `pedidos-api/` | Microservicio de pedidos (Spring Boot 3.4, Java 21) | 8080 |
 | `catalogo-api/` | Microservicio de catálogo y stock | 8081 |
-| `infra/` | Definición OpenAPI para AWS API Gateway | — |
-| `docker-compose.yml` | Broker RabbitMQ para la mensajería asíncrona | 5672 / 15672 |
+| `rabbit-admin-api/` | Microservicio administrador de RabbitMQ (queues, exchanges, bindings) | 8082 |
+| `infra/` | OpenAPI para AWS API Gateway, scripts de despliegue y clúster RabbitMQ | — |
+| `monitor/` | Monitor de colas por la Management API (Python, sin dependencias) | — |
+| `docker-compose.yml` | Broker RabbitMQ single-node para la mensajería asíncrona | 5672 / 15672 |
 
 ```
 Angular + MSAL  ──Access Token──►  API Gateway (JWT Authorizer)
@@ -110,73 +112,149 @@ desde los tres primeros.
 
 ## Mensajería asíncrona con RabbitMQ
 
-`pedidos-api` publica eventos de pedido en un DirectExchange y tres colas los consumen.
-Solo se desacoplan tareas posteriores: la validación de stock, la persistencia y el
-cambio de estado siguen siendo síncronos, porque el cliente espera su resultado.
+`pedidos-api` publica eventos de pedido y tres consumers los procesan. Solo se desacoplan
+tareas posteriores: la validación de stock, la persistencia y el cambio de estado siguen
+siendo síncronos, porque el cliente espera su resultado.
 
-| Routing key | notificaciones.queue | cocina.queue | despacho.queue |
-|---|---|---|---|
-| `pedido.creado` | sí | no | no |
-| `pedido.aceptado` | sí | sí | no |
-| `pedido.despachado` | sí | no | sí |
+### Topología
 
-`EN_PREPARACION` y `CANCELADO` no tienen binding, así que no publican nada. El Exchange
-exige coincidencia exacta de routing key: `pedido.aceptado` y `pedido.aceptado.v2`
-son claves distintas.
+Toda la topología se declara en `pedidos-api/.../config/RabbitMQConfig.java`, separada de
+la lógica de negocio. El producer (`PedidoEventoProducer`) solo conoce los exchanges y la
+routing key; qué colas reciben cada evento lo resuelven los bindings.
 
-El producer (`PedidoEventoProducer`) solo conoce el Exchange y la routing key; no sabe
-qué colas ni qué consumers están suscritos. Eso lo resuelven los Bindings.
+| Exchange | Tipo | Binding | Cola | Consumer |
+|---|---|---|---|---|
+| `pedidos360.direct.exchange` | direct | `pedido.aceptado` | `pedidos360.cocina.queue` | `CocinaConsumer` |
+| `pedidos360.direct.exchange` | direct | `pedido.despachado` | `pedidos360.documentos.queue` | `DocumentosConsumer` |
+| `pedidos360.topic.exchange` | topic | `pedido.#` | `pedidos360.notificaciones.queue` | `NotificacionesConsumer` |
+| `pedidos360.dlx.exchange` | direct | `<cola>.dlq` | `pedidos360.<dominio>.dlq` | — (se revisa y se purga) |
+
+Cada cola principal declara `pedidos360.dlx.exchange` como dead-letter exchange y tiene su
+cola `pedidos360.<dominio>.retry`, que retiene el mensaje 5 s y lo devuelve a la principal.
+
+### Confirmación, reintentos y DLQ
+
+Los consumers usan `ackMode = "MANUAL"`:
+
+```
+procesa bien                     -> basicAck
+falla (intento 1 o 2)            -> copia en <dominio>.retry (x-intentos + 1) y basicAck del original
+falla en el intento 3            -> basicNack(requeue=false) -> DLX -> <dominio>.dlq, con log del error
+no se pudo publicar el reintento -> basicNack(requeue=false) -> DLQ (nunca queda Unacked)
+```
+
+`Reintentos` cuenta los intentos y publica en `.retry`; el ACK o NACK lo decide cada consumer.
 
 ### Levantar el broker
+
+Single-node:
 
 ```bash
 docker compose up -d
 docker compose ps        # debe mostrar el broker healthy antes de seguir
 ```
 
-La Management UI queda en http://localhost:15672 con `guest` / `guest`. El puerto 5672
-es AMQP (conexiones de las aplicaciones) y el 15672 es la interfaz web de administración.
+Clúster de dos nodos (`rabbit1` en 5672/15672, `rabbit2` en 5673/15673). No levantar ambos
+compose a la vez, porque comparten puertos:
+
+```powershell
+docker compose -f infra/docker-compose.cluster.yml up -d
+powershell -ExecutionPolicy Bypass -File infra/01_Inicializar_Cluster_Windows.ps1   # solo la primera vez
+powershell -ExecutionPolicy Bypass -File infra/02_Verificar_Cluster_Windows.ps1
+powershell -ExecutionPolicy Bypass -File infra/03_Politica_Retencion_Windows.ps1    # TTL 120 s y max-length 200
+```
+
+La Management UI queda en http://localhost:15672 con `labuser` / `labpass` (solo laboratorio).
 
 ### Ejecutar con mensajería
 
 ```bash
-docker compose up -d
-cd catalogo-api && mvn spring-boot:run -Dspring-boot.run.profiles=local
-cd pedidos-api  && mvn spring-boot:run -Dspring-boot.run.profiles=local
+cd catalogo-api     && mvn spring-boot:run -Dspring-boot.run.profiles=local
+cd pedidos-api      && mvn spring-boot:run -Dspring-boot.run.profiles=local
+cd rabbit-admin-api && mvn spring-boot:run
 cd cloud-native-angular && npm install && npm start
 ```
 
-`pedidos-api` declara el Exchange, las colas y los bindings al conectarse, así que
-aparecen solos en la Management UI. Los consumers escriben en la consola del servicio:
+`pedidos-api` declara exchanges, colas y bindings al conectarse. Los consumers escriben en
+la consola del servicio:
 
 ```
 [NOTIFICACIÓN] {"pedidoId":101,"estado":"ACEPTADO",...}
 [COCINA] {"pedidoId":101,"estado":"ACEPTADO",...}
-[DESPACHO] {"pedidoId":101,"estado":"DESPACHADO",...}
+[DOCUMENTOS] {"pedidoId":101,"estado":"DESPACHADO",...}
 ```
 
-Para comprobar que un mensaje sobrevive a un consumer apagado, detén `pedidos-api` con
-un pedido en `ACEPTADO`: la cola queda con el mensaje en Ready y se procesa al reiniciar.
+Si las colas ya existían en el broker con otros argumentos (versiones anteriores sin DLX),
+RabbitMQ responde `PRECONDITION_FAILED`: elimínalas en la Management UI antes de arrancar.
 
-La conexión se parametriza con `RABBITMQ_HOST`, `RABBITMQ_PORT`, `RABBITMQ_USER` y
-`RABBITMQ_PASSWORD`. Los valores por defecto (`guest`/`guest`) son para el laboratorio
-local; en cloud hay que usar credenciales propias, nunca las del compose.
+### Fallo controlado (laboratorio)
 
-Lo que esta etapa deja fuera, y corresponde a la continuidad de la unidad: ACK/NACK
-manual, reintentos, DLX/DLQ, prefetch, TTL, clúster de dos nodos y Kafka. La
-consistencia entre la transacción de base de datos y la publicación del mensaje también
-se profundiza más adelante.
+Con el perfil `local`, `POST /api/lab/pedidos/aceptar` publica un pedido aceptado y uno
+despachado, marcando qué cola debe fallar. No necesita token y solo existe con
+`pedidos360.lab.habilitado=true`, que no se activa en la nube.
+
+```bash
+curl -X POST http://localhost:8080/api/lab/pedidos/aceptar -H "Content-Type: application/json" \
+  -d '{"pedidoId":210,"clienteEmail":"prueba@example.com","falloCocina":true}'
+```
+
+En el log se ven los intentos 1/3 y 2/3, luego el NACK, y el mensaje queda en
+`pedidos360.cocina.dlq`. Para revisar las colas:
+
+```bash
+python monitor/monitor_queues.py --una-vez    # Ready, Unacked, Consumers y alertas de DLQ
+```
+
+### Administrador de RabbitMQ (`rabbit-admin-api`)
+
+Microservicio aparte que administra el broker por REST. Exige el scope `Pedidos.Read` y el
+rol `Admin`. La lógica está en `RabbitAdminService`; el controller solo valida las entradas.
+
+| Método | Ruta | Qué hace |
+|---|---|---|
+| GET | `/api/admin/rabbit/queues/{nombre}` | Mensajes Ready y consumers de la cola |
+| POST | `/api/admin/rabbit/queues` | Crear cola; `ttlMs`, `maxLength` y `deadLetterExchange` opcionales |
+| DELETE | `/api/admin/rabbit/queues/{nombre}` | Eliminar cola |
+| DELETE | `/api/admin/rabbit/queues/{nombre}/mensajes` | Purgar cola (por ejemplo, una DLQ ya revisada) |
+| POST | `/api/admin/rabbit/exchanges` | Crear exchange `direct` o `topic` |
+| DELETE | `/api/admin/rabbit/exchanges/{nombre}` | Eliminar exchange |
+| POST | `/api/admin/rabbit/bindings` | Crear binding |
+| DELETE | `/api/admin/rabbit/bindings` | Eliminar binding |
+
+Validaciones (400):
+- nombres vacíos o con caracteres fuera de `[a-zA-Z0-9._-]`;
+- tipo de exchange desconocido;
+- TTL o max-length en cero, negativos o fuera de rango;
+- comodines `*` o `#` en un binding de un exchange `direct`.
+
+Otras respuestas:
+- 404 si la cola no existe;
+- 409 si se intenta modificar la topología de Pedidos360 (`pedidos360.*`), que solo se puede purgar;
+- 503 si el broker no responde.
+
+```bash
+curl -X POST http://localhost:8082/api/admin/rabbit/queues -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" -d '{"nombre":"lab.auditoria.queue","ttlMs":60000}'
+```
+
+### Configuración
+
+La conexión se parametriza con `RABBITMQ_ADDRESSES` (por defecto `localhost:5672,localhost:5673`),
+`RABBITMQ_USER` y `RABBITMQ_PASSWORD`. `labuser` / `labpass` son solo para el laboratorio
+local; en cloud hay que usar credenciales propias.
 
 ## Pruebas
 
 ```bash
-cd pedidos-api  && mvn test      # 34 tests
-cd catalogo-api && mvn test      # 14 tests
+cd pedidos-api      && mvn test      # 45 tests
+cd catalogo-api     && mvn test      # 14 tests
+cd rabbit-admin-api && mvn test      # 20 tests
 cd cloud-native-angular && npm test
 ```
 
 Cubren los rechazos 401 y 403, los permisos de cada rol, las transiciones de estado, el
-descuento de stock y el contrato HTTP entre los dos microservicios.
+descuento de stock, el contrato HTTP entre los microservicios, la topología de RabbitMQ, el
+ACK/NACK de los consumers y las validaciones del administrador. No necesitan broker.
 
 ## Despliegue
 

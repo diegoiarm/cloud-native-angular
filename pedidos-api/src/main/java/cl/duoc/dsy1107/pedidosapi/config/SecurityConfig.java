@@ -37,8 +37,8 @@ public class SecurityConfig {
                                 "/api/publico")
                         .permitAll()
                         // Laboratorio 1 (documento 04): se invoca con Postman sin token.
-                        // Ruta local de laboratorio: no se publica en el API Gateway
-                        // ni se expone en la nube.
+                        // LabController solo existe con pedidos360.lab.habilitado=true
+                        // (perfil local); en la nube la ruta no tiene controller.
                         .requestMatchers(
                                 "/api/lab/**")
                         .permitAll()
@@ -46,8 +46,7 @@ public class SecurityConfig {
                         // los roles por operación se validan con @PreAuthorize en el controller.
                         .requestMatchers(
                                 "/api/orders/**",
-                                "/api/pedidos",
-                                "/api/admin/rabbit/**")
+                                "/api/pedidos")
                         .hasAuthority(
                                 "SCOPE_Pedidos.Read")
                         .anyRequest()
