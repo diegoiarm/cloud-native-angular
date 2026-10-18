@@ -22,6 +22,19 @@ docker compose -f $compose up -d
 if ($LASTEXITCODE -ne 0) { Write-Error "No se pudo levantar el compose del clúster." }
 docker compose -f $compose ps
 
+# "up -d" vuelve apenas crea los contenedores; el nodo Erlang tarda unos segundos más
+# en arrancar y await_startup falla si todavía no existe. Se espera el healthcheck.
+function Esperar-Healthy($contenedor) {
+    for ($i = 0; $i -lt 36; $i++) {
+        $estado = docker inspect -f '{{.State.Health.Status}}' $contenedor
+        if ($estado -eq "healthy") { return }
+        Start-Sleep -Seconds 5
+    }
+    Write-Error "$contenedor no quedo healthy en 3 minutos (estado: $estado)."
+}
+Esperar-Healthy "pedidos360-rabbit1"
+Esperar-Healthy "pedidos360-rabbit2"
+
 docker exec pedidos360-rabbit1 rabbitmqctl await_startup
 if ($LASTEXITCODE -ne 0) { Write-Error "rabbit1 no arranco." }
 docker exec pedidos360-rabbit2 rabbitmqctl await_startup

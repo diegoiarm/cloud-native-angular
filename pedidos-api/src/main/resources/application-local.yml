@@ -14,3 +14,9 @@ spring:
   h2:
     console:
       enabled: true
+
+# Habilita POST /api/lab/pedidos/aceptar (fallo controlado del Laboratorio 1).
+# Solo en este perfil: en la nube la ruta no existe.
+pedidos360:
+  lab:
+    habilitado: true

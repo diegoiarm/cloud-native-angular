@@ -23,8 +23,10 @@ spring:
     password: ${RABBITMQ_PASSWORD:labpass}
     listener:
       simple:
-        # Mensaje rechazado sin requeue (intentos agotados o error inesperado):
-        # el DLX de la cola principal lo conduce a la DLQ, nunca a un bucle de requeue.
+        # Los consumers de Pedidos360 confirman a mano (ackMode = "MANUAL" en cada
+        # @RabbitListener): basicAck al procesar, basicNack sin requeue al agotar intentos.
+        # Para cualquier otro listener, un rechazo tampoco vuelve a la cola: el DLX
+        # de la cola principal lo conduce a la DLQ, nunca a un bucle de requeue.
         default-requeue-rejected: false
   security:
     oauth2:
