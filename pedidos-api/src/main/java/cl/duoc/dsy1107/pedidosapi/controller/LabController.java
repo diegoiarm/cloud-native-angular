@@ -25,10 +25,11 @@ import org.springframework.web.bind.annotation.RestController;
  * debe fallar: pedido.aceptado llega a notificaciones (Topic) y cocina (Direct);
  * pedido.despachado llega a notificaciones (Topic) y documentos (Direct).
  *
- * Solo sirve para el laboratorio local: la ruta queda fuera de la colección del
- * API Gateway (infra/api-gateway-openapi.yaml) y el controller solo se registra con
- * pedidos360.lab.habilitado=true (application-local.yml). En la nube no existe, aunque
- * el puerto 8080 de la EC2 sea alcanzable.
+ * El controller solo se registra con pedidos360.lab.habilitado=true. En local
+ * (application-local.yml) se llama sin token; en la nube, para la demostración
+ * EP4-08, se habilita con PEDIDOS360_LAB_HABILITADO=true y SecurityConfig exige
+ * un token con rol Admin, porque el puerto 8080 de la EC2 es alcanzable desde
+ * internet. La ruta queda fuera del API Gateway (infra/api-gateway-openapi.yaml).
  */
 @RestController
 @RequestMapping("/api/lab/pedidos")

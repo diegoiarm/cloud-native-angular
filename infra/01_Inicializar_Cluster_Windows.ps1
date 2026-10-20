@@ -1,6 +1,6 @@
 ﻿# Documento 05 - Paso 1, Paso 2 y Paso 3: clúster de dos nodos.
-# SOLO PRIMERA INICIALIZACION: el Paso 2 incluye "reset" del segundo nodo.
-# NO ejecutar cuando el clúster ya funciona con datos; en reinicios normales basta:
+# El clúster se forma solo al arrancar; el Paso 2 hace "reset" + join del segundo
+# nodo únicamente si eso no ocurrió. En reinicios normales basta:
 #   docker compose -f infra/docker-compose.cluster.yml up -d
 #   powershell -ExecutionPolicy Bypass -File infra/02_Verificar_Cluster_Windows.ps1
 #
@@ -40,12 +40,19 @@ if ($LASTEXITCODE -ne 0) { Write-Error "rabbit1 no arranco." }
 docker exec pedidos360-rabbit2 rabbitmqctl await_startup
 if ($LASTEXITCODE -ne 0) { Write-Error "rabbit2 no arranco." }
 
-Write-Host "Paso 2 - Unir el segundo nodo (solo primera vez)"
-docker exec pedidos360-rabbit2 rabbitmqctl stop_app
-docker exec pedidos360-rabbit2 rabbitmqctl reset
-docker exec pedidos360-rabbit2 rabbitmqctl join_cluster rabbit@rabbit1
-if ($LASTEXITCODE -ne 0) { Write-Error "join_cluster fallo: revise que ambos nodos tengan la misma Erlang Cookie." }
-docker exec pedidos360-rabbit2 rabbitmqctl start_app
+Write-Host "Paso 2 - Unir el segundo nodo (solo si el clúster no se formó solo)"
+# Con peer discovery (rabbitmq-cloud/rabbitmq.conf) los nodos se unen al arrancar;
+# el join manual del documento 05 queda solo como respaldo.
+$estado = docker exec pedidos360-rabbit1 rabbitmqctl cluster_status --formatter json | ConvertFrom-Json
+if ($estado.running_nodes -contains "rabbit@rabbit2") {
+    Write-Host "El clúster ya se formó: rabbit@rabbit2 está en running_nodes. Se omite el join manual."
+} else {
+    docker exec pedidos360-rabbit2 rabbitmqctl stop_app
+    docker exec pedidos360-rabbit2 rabbitmqctl reset
+    docker exec pedidos360-rabbit2 rabbitmqctl join_cluster rabbit@rabbit1
+    if ($LASTEXITCODE -ne 0) { Write-Error "join_cluster fallo: revise que ambos nodos tengan la misma Erlang Cookie." }
+    docker exec pedidos360-rabbit2 rabbitmqctl start_app
+}
 
 Write-Host "Paso 3 - Verificar ambos nodos"
 docker exec pedidos360-rabbit1 rabbitmqctl cluster_status

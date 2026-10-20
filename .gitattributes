@@ -1,0 +1,5 @@
+# Los scripts y configuraciones que se ejecutan en Linux (EC2, contenedores) van
+# siempre con LF, aunque se clone en Windows: con CRLF fallan con errores $'\r'.
+*.sh          text eol=lf
+mvnw          text eol=lf
+infra/rabbitmq-cloud/*  text eol=lf

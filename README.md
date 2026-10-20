@@ -109,6 +109,8 @@ desde los tres primeros.
 - El precio y el nombre del producto se copian desde el catálogo al crear el pedido, para que
   el pedido no cambie si después se edita el producto.
 - Los errores de negocio responden 409 con un mensaje explicativo en el campo `mensaje`.
+- Si el catálogo o RabbitMQ no responden, la API devuelve 503 y el pedido no cambia. Si
+  RabbitMQ falla justo después de descontar stock al aceptar, el stock se repone.
 
 ## Mensajería asíncrona con RabbitMQ
 
@@ -159,10 +161,15 @@ compose a la vez, porque comparten puertos:
 
 ```powershell
 docker compose -f infra/docker-compose.cluster.yml up -d
-powershell -ExecutionPolicy Bypass -File infra/01_Inicializar_Cluster_Windows.ps1   # solo la primera vez
+powershell -ExecutionPolicy Bypass -File infra/01_Inicializar_Cluster_Windows.ps1   # verifica; une a mano solo si hace falta
 powershell -ExecutionPolicy Bypass -File infra/02_Verificar_Cluster_Windows.ps1
 powershell -ExecutionPolicy Bypass -File infra/03_Politica_Retencion_Windows.ps1    # TTL 120 s y max-length 200
 ```
+
+Los nodos forman el clúster solos al arrancar (peer discovery en
+`infra/rabbitmq-cloud/rabbitmq.conf`) y arrancan a la vez. RabbitMQ 4 necesita mayoría de
+nodos para la metadata, y con 2 nodos eso son los 2: si uno arranca esperando al otro, el
+clúster no vuelve después de un reinicio. Por eso no hay `depends_on` entre ellos.
 
 La Management UI queda en http://localhost:15672 con `labuser` / `labpass` (solo laboratorio).
 
@@ -189,9 +196,12 @@ RabbitMQ responde `PRECONDITION_FAILED`: elimínalas en la Management UI antes d
 
 ### Fallo controlado (laboratorio)
 
-Con el perfil `local`, `POST /api/lab/pedidos/aceptar` publica un pedido aceptado y uno
-despachado, marcando qué cola debe fallar. No necesita token y solo existe con
-`pedidos360.lab.habilitado=true`, que no se activa en la nube.
+`POST /api/lab/pedidos/aceptar` publica un pedido aceptado y uno despachado, marcando qué
+cola debe fallar. Solo existe con `pedidos360.lab.habilitado=true`:
+
+- con el perfil `local` se llama sin token (`pedidos360.lab.sin-token=true`);
+- en la nube se habilita con `PEDIDOS360_LAB_HABILITADO=true` para la demostración EP4-08
+  y exige un token con rol `Admin`, porque el puerto de la EC2 es alcanzable desde internet.
 
 ```bash
 curl -X POST http://localhost:8080/api/lab/pedidos/aceptar -H "Content-Type: application/json" \
@@ -246,7 +256,7 @@ local; en cloud hay que usar credenciales propias.
 ## Pruebas
 
 ```bash
-cd pedidos-api      && mvn test      # 45 tests
+cd pedidos-api      && mvn test      # 49 tests
 cd catalogo-api     && mvn test      # 14 tests
 cd rabbit-admin-api && mvn test      # 20 tests
 cd cloud-native-angular && npm test
@@ -258,11 +268,15 @@ ACK/NACK de los consumers y las validaciones del administrador. No necesitan bro
 
 ## Despliegue
 
+La guía completa, paso a paso, está en [`infra/DEPLOY.md`](infra/DEPLOY.md). En resumen:
+
 1. RDS PostgreSQL con las bases `pedidosdb` y `catalogodb`.
-2. Los dos servicios en EC2, con las variables `DB_HOST`, `DB_USER`, `DB_PASSWORD` y
-   `CATALOGO_URL`.
-3. Importar `infra/api-gateway-openapi.yaml` en API Gateway como HTTP API y reemplazar
+2. Una EC2 con los tres servicios (`ec2-user-data.sh`) y, una sola vez,
+   `ec2-rabbitmq-setup.sh`: Docker, credenciales propias de RabbitMQ y `rabbit-admin-api`.
+3. `infra/deploy-ec2.sh` compila y sube los JAR y el clúster de dos nodos
+   (`infra/rabbitmq-cloud/`), lo levanta y aplica la política de retención.
+4. Importar `infra/api-gateway-openapi.yaml` en API Gateway como HTTP API y reemplazar
    `TU-EC2-DNS` y `TU-EC2-CATALOGO-DNS` por la IP de la instancia.
-4. Publicar el frontend y completar `environment.prod.ts` con la URL del Gateway.
-5. Agregar el dominio de producción como redirect URI en Entra y en el CORS de los dos
-   servicios, que hoy solo permiten `http://localhost:4200`.
+5. Publicar el frontend y completar `environment.prod.ts` con la URL del Gateway.
+6. Agregar el dominio de producción como redirect URI en Entra y en el CORS de los
+   servicios.
