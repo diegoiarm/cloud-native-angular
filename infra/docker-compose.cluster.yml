@@ -6,7 +6,11 @@
 #   docker compose -f infra/docker-compose.cluster.yml up -d
 #   docker compose -f infra/docker-compose.cluster.yml ps
 #
-# Solo la PRIMERA vez se une el nodo 2: infra/01_Inicializar_Cluster_Windows.ps1
+# El clúster se forma solo al primer arranque (peer discovery en
+# rabbitmq-cloud/rabbitmq.conf, el mismo archivo que usa la EC2) y los dos nodos
+# arrancan a la vez: RabbitMQ 4 necesita mayoría de nodos para la metadata, y con
+# depends_on el primero esperaba al segundo y el clúster no volvía tras un reinicio.
+# infra/01_Inicializar_Cluster_Windows.ps1 verifica y solo une a mano si hace falta.
 # Para comprobar sin resetear: infra/02_Verificar_Cluster_Windows.ps1
 # No dejar levantado el compose single-node (docker-compose.yml): comparte 5672/15672.
 
@@ -23,12 +27,15 @@ services:
       RABBITMQ_DEFAULT_PASS: labpass
       RABBITMQ_ERLANG_COOKIE: Pedidos360LaboratorioCookie
     volumes:
+      - ./rabbitmq-cloud/rabbitmq.conf:/etc/rabbitmq/conf.d/90-pedidos360.conf:ro
       - rabbit1_data:/var/lib/rabbitmq
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      # check_running: healthy solo cuando RabbitMQ terminó de arrancar (ping
+      # respondía aunque el nodo siguiera esperando al otro).
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
       interval: 10s
-      timeout: 5s
-      retries: 10
+      timeout: 10s
+      retries: 20
 
   rabbit2:
     image: rabbitmq:4.2-management
@@ -42,15 +49,15 @@ services:
       RABBITMQ_DEFAULT_PASS: labpass
       RABBITMQ_ERLANG_COOKIE: Pedidos360LaboratorioCookie
     volumes:
+      - ./rabbitmq-cloud/rabbitmq.conf:/etc/rabbitmq/conf.d/90-pedidos360.conf:ro
       - rabbit2_data:/var/lib/rabbitmq
-    depends_on:
-      rabbit1:
-        condition: service_healthy
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      # check_running: healthy solo cuando RabbitMQ terminó de arrancar (ping
+      # respondía aunque el nodo siguiera esperando al otro).
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
       interval: 10s
-      timeout: 5s
-      retries: 10
+      timeout: 10s
+      retries: 20
 
 volumes:
   rabbit1_data:

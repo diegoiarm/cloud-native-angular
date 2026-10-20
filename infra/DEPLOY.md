@@ -56,8 +56,10 @@ La base ya la creaste. Solo hay que confirmar los datos y copiar el endpoint.
 2. **Nombre**: `dsy1107-pedidos-api`.
 3. **Imágenes de aplicaciones y SO**: deja seleccionada **Amazon Linux**, y en la lista
    desplegable **Amazon Linux 2023 AMI** (64 bits, x86).
-4. **Tipo de instancia**: abre el desplegable y elige **t3.small**.
-   No uses micro: son dos servicios Java en la misma máquina.
+4. **Tipo de instancia**: abre el desplegable y elige **t3.small** (2 GB), o **t3.medium**
+   (4 GB) si el laboratorio lo permite. No uses micro: son tres servicios Java y dos nodos
+   RabbitMQ en la misma máquina. En t3.small funciona con cada Java limitado a 256 MB y
+   una swap de 1 GB (lo deja configurado el paso 4.0).
 5. **Par de claves**: en el desplegable elige **vockey**. Es la llave que descargaste en el
    paso 0.
 6. **Configuración de red** → botón **Editar**:
@@ -66,7 +68,7 @@ La base ya la creaste. Solo hay que confirmar los datos y copiar el endpoint.
    - **Firewall (grupos de seguridad)**: marca **Crear grupo de seguridad**.
    - **Nombre**: `dsy1107-ec2-sg`. Descripción: la misma.
    - Deja la regla SSH que viene y agrega las demás con **Agregar regla de grupo de
-     seguridad**, hasta tener estas cuatro:
+     seguridad**, hasta tener estas siete:
 
    | Tipo | Puerto | Origen | Para qué |
    |---|---|---|---|
@@ -74,6 +76,14 @@ La base ya la creaste. Solo hay que confirmar los datos y copiar el endpoint.
    | SSH | 22 | Personalizado → escribe `com.amazonaws.us-east-1.ec2-instance-connect` | terminal del navegador |
    | TCP personalizado | 8080 | 0.0.0.0/0 | lo llama API Gateway |
    | TCP personalizado | 8081 | 0.0.0.0/0 | lo llama API Gateway |
+   | TCP personalizado | 8082 | Mi IP | administrador RabbitMQ (`rabbit-admin-api`) desde Postman |
+   | TCP personalizado | 15672 | Mi IP | Management UI de `rabbit1` |
+   | TCP personalizado | 15673 | Mi IP | Management UI de `rabbit2` |
+
+   Los puertos AMQP (5672 y 5673) **no** se abren: solo los usan los servicios de la misma
+   instancia. Si otro integrante necesita la Management UI o el administrador, agrega su IP
+   como otra regla. Si la instancia ya existe, estas reglas se agregan en EC2 → **Grupos de
+   seguridad** → `dsy1107-ec2-sg` → **Editar reglas de entrada**.
 
 7. **Configurar almacenamiento**: deja 8 GiB gp3.
 8. Despliega **Detalles avanzados** (*Advanced details*), baja hasta el final y en el campo
@@ -109,6 +119,32 @@ Nunca pongas 0.0.0.0/0 en el 5432.
 El user data ya instaló Java 21 y creó las dos bases, pero los servicios están esperando
 los archivos.
 
+### 4.0 Preparar RabbitMQ (una sola vez por instancia)
+
+Instala Docker, crea las credenciales del clúster y registra `rabbit-admin-api`. Sirve
+también para una instancia que ya estaba funcionando con la EV2.
+
+En **Git Bash**, desde la carpeta del repo:
+
+```bash
+scp -i /c/Users/diego/aws/labsuser.pem infra/ec2-rabbitmq-setup.sh ec2-user@<IP-PUBLICA>:/tmp/
+ssh -i /c/Users/diego/aws/labsuser.pem ec2-user@<IP-PUBLICA>
+```
+
+Ya dentro de la instancia, elige una clave nueva para RabbitMQ (no `labpass`) y ejecuta:
+
+```bash
+read -rsp "Clave RabbitMQ: " RMQ && echo
+sudo RABBITMQ_PASSWORD="$RMQ" bash /tmp/ec2-rabbitmq-setup.sh
+# En t3.medium puedes dar más memoria a cada Java:
+# sudo RABBITMQ_PASSWORD="$RMQ" JAVA_XMX=512m bash /tmp/ec2-rabbitmq-setup.sh
+exit
+```
+
+`read -s` evita que la clave quede en el historial. Queda guardada solo en la instancia:
+en `/opt/pedidos360/rabbitmq/.env` (permisos 600) y en los servicios. El usuario de
+RabbitMQ es `pedidos360`.
+
 ### 4.1 Compilar y subir
 
 En **Git Bash**, desde la carpeta del repo:
@@ -119,24 +155,25 @@ chmod 400 /c/Users/diego/aws/labsuser.pem
 ./infra/deploy-ec2.sh <IP-PUBLICA> /c/Users/diego/aws/labsuser.pem
 ```
 
-Eso compila los dos servicios, sube los JAR, reinicia y muestra los códigos de prueba.
-Al final debe imprimir:
+Eso compila los tres servicios y sube los JAR y el compose del clúster
+(`infra/rabbitmq-cloud/`). Después levanta los dos nodos RabbitMQ, que forman el clúster
+solos, aplica la política de retención, reinicia los servicios y muestra los códigos de
+prueba. Al final debe imprimir:
 
 ```
+pedidos360-rabbit1: healthy
+pedidos360-rabbit2: healthy
+running_nodes: ['rabbit@rabbit1', 'rabbit@rabbit2']
+active
+active
+active
 publico=200
 orders sin token=401
 catalog sin token=401
+admin rabbit sin token=401
 ```
 
-Si prefieres PowerShell y hacerlo a mano:
-
-```powershell
-cd C:\Users\diego\Documents\cloud-nativa-angular-ev1\cloud-native-angular
-mvn -q -f pedidos-api/pom.xml -DskipTests package
-mvn -q -f catalogo-api/pom.xml -DskipTests package
-scp -i C:\Users\diego\aws\labsuser.pem pedidos-api\target\pedidos-api-0.0.1-SNAPSHOT.jar ec2-user@<IP>:/opt/pedidos360/pedidos-api.jar
-scp -i C:\Users\diego\aws\labsuser.pem catalogo-api\target\catalogo-api-0.0.1-SNAPSHOT.jar ec2-user@<IP>:/opt/pedidos360/catalogo-api.jar
-```
+y la lista de las 9 colas `pedidos360.*`, con 1 consumer en cada `.queue`.
 
 ### 4.2 Revisar desde la instancia
 
@@ -145,19 +182,44 @@ scp -i C:\Users\diego\aws\labsuser.pem catalogo-api\target\catalogo-api-0.0.1-SN
 3. Ejecuta:
 
 ```bash
-sudo systemctl restart catalogo-api pedidos-api
-systemctl is-active catalogo-api pedidos-api      # debe decir active dos veces
+systemctl is-active catalogo-api pedidos-api rabbit-admin-api   # active tres veces
 curl http://localhost:8080/api/publico            # 200 con un JSON
 curl -i http://localhost:8080/api/orders          # 401
 curl -i http://localhost:8081/api/catalog/products # 401
+sudo docker ps                                    # pedidos360-rabbit1 y rabbit2 (healthy)
+sudo docker exec pedidos360-rabbit1 rabbitmqctl cluster_status   # Running Nodes: los dos
+sudo docker exec pedidos360-rabbit1 rabbitmqctl list_policies    # pedidos360-principales
 ```
 
-Si algo no arranca: `sudo journalctl -u pedidos-api -n 50 --no-pager`.
+Si algo no arranca: `sudo journalctl -u pedidos-api -n 50 --no-pager`. Para RabbitMQ:
+`sudo docker logs --tail 50 pedidos360-rabbit1`.
 
 ### 4.3 Comprobar desde tu PC
 
-En el navegador abre `http://<IP-PUBLICA>:8080/api/publico`. Debe responder el JSON del
-endpoint público. Si no carga, revisa las reglas 8080 y 8081 del paso 2.
+- `http://<IP-PUBLICA>:8080/api/publico` debe responder el JSON del endpoint público. Si
+  no carga, revisa las reglas 8080 y 8081 del paso 2.
+- `http://<IP-PUBLICA>:15672` abre la Management UI de `rabbit1` (usuario `pedidos360` y la
+  clave del paso 4.0). En **Overview → Nodes** deben aparecer `rabbit@rabbit1` y
+  `rabbit@rabbit2`. Para `rabbit2`, el puerto 15673.
+- El monitor de colas también funciona contra la nube:
+
+```bash
+RABBITMQ_MANAGEMENT_URL=http://<IP-PUBLICA>:15672 RABBITMQ_USER=pedidos360 \
+RABBITMQ_PASSWORD='<clave>' python monitor/monitor_queues.py --una-vez
+```
+
+### 4.4 Administrador y fallo controlado (EP4-08 y EP4-09)
+
+Los dos exigen un token de Entra con rol **Admin** (se obtiene desde la app con la cuenta
+`admin.p360`). No pasan por el API Gateway: se llaman directo a la instancia.
+
+| Qué | Request |
+|---|---|
+| Estado de una DLQ | `GET http://<IP-PUBLICA>:8082/api/admin/rabbit/queues/pedidos360.cocina.dlq` |
+| Crear cola | `POST http://<IP-PUBLICA>:8082/api/admin/rabbit/queues` con `{"nombre":"lab.auditoria.queue","ttlMs":60000}` |
+| Fallo controlado en cocina | `POST http://<IP-PUBLICA>:8080/api/lab/pedidos/aceptar` con `{"pedidoId":900,"clienteEmail":"demo@example.com","falloCocina":true}` |
+
+Sin token responden 401; con otro rol, 403. El resto de los endpoints está en el README.
 
 ---
 
@@ -283,7 +345,9 @@ sudo systemctl daemon-reload && sudo systemctl restart pedidos-api catalogo-api
 2. EC2 → Instancias → selecciona la tuya → **Estado de la instancia** → **Iniciar instancia**.
 3. Copia la **nueva IP pública**, porque cambia.
 4. API Gateway → tu API → **Integraciones**: edita cada una y reemplaza la IP antigua.
-5. En la terminal de la instancia: `systemctl is-active pedidos-api catalogo-api`.
+5. En la terminal de la instancia: `systemctl is-active pedidos-api catalogo-api rabbit-admin-api`
+   y `sudo docker ps`. Docker y los dos nodos RabbitMQ arrancan solos con la instancia y
+   vuelven a formar el clúster; tardan cerca de un minuto en quedar *healthy*.
 
 Para evitar el paso 3 y 4: EC2 → menú izquierdo **IP elásticas** → **Asignar dirección IP
 elástica** → **Asignar** → selecciónala → **Acciones** → **Asociar dirección IP elástica**
@@ -302,3 +366,7 @@ elástica** → **Asignar** → selecciónala → **Acciones** → **Asociar dir
 | La app sigue llamando a localhost | `environment.ts` sin el Invoke URL, o falta reiniciar `npm start` |
 | 401 con sesión iniciada | Issuer o audience del authorizer distintos a los del token; revisa los claims en el dashboard |
 | 403 con token válido | Al usuario le falta el App Role en Entra ID |
+| Crear o aceptar un pedido responde 500 | RabbitMQ caído: `sudo docker ps`; si falta un nodo, `cd /opt/pedidos360/rabbitmq && sudo docker compose up -d` |
+| Un nodo queda *unhealthy* tras reiniciar | Los dos nodos deben arrancar juntos: `sudo docker compose restart` en `/opt/pedidos360/rabbitmq`, nunca uno solo |
+| Management UI no carga | Reglas 15672/15673 con tu IP actual (cambia si cambias de red) |
+| La instancia se pone lenta | Memoria: `free -m`. En t3.small, baja `JAVA_XMX` o cambia a t3.medium y vuelve a correr el paso 4.0 con `JAVA_XMX=512m` |

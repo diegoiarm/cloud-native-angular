@@ -6,6 +6,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.authorization.AuthorityAuthorizationManager;
+import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -19,6 +21,11 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @Configuration
 @EnableMethodSecurity
 public class SecurityConfig {
+
+    // true solo en el perfil local: la ruta de laboratorio se llama con Postman sin token.
+    @Value("${pedidos360.lab.sin-token:false}")
+    private boolean labSinToken;
+
     @Bean
     SecurityFilterChain securityFilterChain(
             HttpSecurity http) throws Exception {
@@ -36,12 +43,15 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/publico")
                         .permitAll()
-                        // Laboratorio 1 (documento 04): se invoca con Postman sin token.
-                        // LabController solo existe con pedidos360.lab.habilitado=true
-                        // (perfil local); en la nube la ruta no tiene controller.
+                        // Laboratorio 1 (documento 04): fallo controlado para demostrar la DLQ.
+                        // LabController solo existe con pedidos360.lab.habilitado=true.
+                        // En local (pedidos360.lab.sin-token=true) se invoca sin token;
+                        // en la nube exige un token con rol Admin.
                         .requestMatchers(
                                 "/api/lab/**")
-                        .permitAll()
+                        .access(labSinToken
+                                ? (autenticacion, contexto) -> new AuthorizationDecision(true)
+                                : AuthorityAuthorizationManager.hasRole("Admin"))
                         // Toda la API de pedidos exige el scope delegado;
                         // los roles por operación se validan con @PreAuthorize en el controller.
                         .requestMatchers(

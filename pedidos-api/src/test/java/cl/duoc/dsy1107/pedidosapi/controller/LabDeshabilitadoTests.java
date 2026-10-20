@@ -14,8 +14,9 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
- * Sin pedidos360.lab.habilitado (configuración cloud) la ruta de laboratorio no
- * existe: nadie puede publicar eventos sin token aunque /api/lab/** sea permitAll.
+ * Sin pedidos360.lab.habilitado la ruta de laboratorio no existe, y sin
+ * pedidos360.lab.sin-token tampoco es pública: una llamada anónima recibe 401 y
+ * no publica nada.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -32,7 +33,7 @@ class LabDeshabilitadoTests {
         mockMvc.perform(post("/api/lab/pedidos/aceptar")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"pedidoId\":210,\"clienteEmail\":\"prueba@example.com\"}"))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isUnauthorized());
 
         verifyNoInteractions(productor);
     }

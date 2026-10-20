@@ -22,7 +22,7 @@ import org.springframework.context.annotation.Configuration;
  *   pedidos360.dlx.exchange     dead-letter exchange:
  *       <cola>.dlq       -> pedidos360.<dominio>.dlq
  *
- * Cada cola principal declare su propio DLX: el mensaje rechazado sin requeue,
+ * Cada cola principal declara su propio DLX: el mensaje rechazado sin requeue,
  * expirado por la política de TTL o descartado por max-length termina en su DLQ.
  * La cola <dominio>.retry retiene el reintento 5 s y devuelve el mensaje a la
  * cola principal (TTL de la Semana 09); la política de retención del documento 03

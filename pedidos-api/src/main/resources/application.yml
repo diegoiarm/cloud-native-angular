@@ -28,6 +28,10 @@ spring:
         # Para cualquier otro listener, un rechazo tampoco vuelve a la cola: el DLX
         # de la cola principal lo conduce a la DLQ, nunca a un bucle de requeue.
         default-requeue-rejected: false
+        # Si una cola no existe al arrancar el consumer (el broker todavía está
+        # arrancando o perdió sus datos), el listener reintenta cada 5 s en vez de
+        # detenerse para siempre. En la EC2 los servicios arrancan antes que RabbitMQ.
+        missing-queues-fatal: false
   security:
     oauth2:
       resourceserver:

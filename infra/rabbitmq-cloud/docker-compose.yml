@@ -1,0 +1,49 @@
+# Clúster RabbitMQ de dos nodos en la EC2 (EP4-01/02/03).
+#
+# Lo sube y levanta infra/deploy-ec2.sh en /opt/pedidos360/rabbitmq. Las
+# credenciales vienen de .env en esa carpeta (lo crea infra/ec2-rabbitmq-setup.sh
+# y nunca se sube al repositorio; formato en .env.example).
+#
+#   AMQP:        5672 (rabbit1) y 5673 (rabbit2), solo desde la misma instancia.
+#   Management:  15672 (rabbit1) y 15673 (rabbit2), abiertos solo a tu IP en el SG.
+
+x-rabbit: &rabbit
+  image: rabbitmq:4.2-management
+  restart: unless-stopped
+  mem_limit: ${RABBITMQ_MEM_LIMIT:-448m}
+  environment:
+    RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:?Falta RABBITMQ_USER en .env}
+    RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?Falta RABBITMQ_PASSWORD en .env}
+    RABBITMQ_ERLANG_COOKIE: ${RABBITMQ_ERLANG_COOKIE:?Falta RABBITMQ_ERLANG_COOKIE en .env}
+  healthcheck:
+    test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+    interval: 15s
+    timeout: 10s
+    retries: 20
+
+services:
+  rabbit1:
+    <<: *rabbit
+    container_name: pedidos360-rabbit1
+    hostname: rabbit1
+    ports:
+      - "127.0.0.1:5672:5672"
+      - "15672:15672"
+    volumes:
+      - ./rabbitmq.conf:/etc/rabbitmq/conf.d/90-pedidos360.conf:ro
+      - rabbit1_data:/var/lib/rabbitmq
+
+  rabbit2:
+    <<: *rabbit
+    container_name: pedidos360-rabbit2
+    hostname: rabbit2
+    ports:
+      - "127.0.0.1:5673:5672"
+      - "15673:15672"
+    volumes:
+      - ./rabbitmq.conf:/etc/rabbitmq/conf.d/90-pedidos360.conf:ro
+      - rabbit2_data:/var/lib/rabbitmq
+
+volumes:
+  rabbit1_data:
+  rabbit2_data:

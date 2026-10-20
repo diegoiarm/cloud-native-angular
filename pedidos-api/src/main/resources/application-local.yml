@@ -15,8 +15,9 @@ spring:
     console:
       enabled: true
 
-# Habilita POST /api/lab/pedidos/aceptar (fallo controlado del Laboratorio 1).
-# Solo en este perfil: en la nube la ruta no existe.
+# Habilita POST /api/lab/pedidos/aceptar (fallo controlado del Laboratorio 1) sin token.
+# En la nube se habilita con PEDIDOS360_LAB_HABILITADO=true y exige rol Admin.
 pedidos360:
   lab:
     habilitado: true
+    sin-token: true

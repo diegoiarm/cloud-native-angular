@@ -21,6 +21,7 @@ import cl.duoc.dsy1107.pedidosapi.client.CatalogoClient;
 import cl.duoc.dsy1107.pedidosapi.client.MovimientoStock;
 import cl.duoc.dsy1107.pedidosapi.client.ProductoCatalogo;
 import cl.duoc.dsy1107.pedidosapi.config.JwtAuthorityConverter;
+import cl.duoc.dsy1107.pedidosapi.exception.MensajeriaNoDisponibleException;
 import cl.duoc.dsy1107.pedidosapi.exception.StockInsuficienteException;
 import cl.duoc.dsy1107.pedidosapi.mensajeria.PedidoEvento;
 import cl.duoc.dsy1107.pedidosapi.mensajeria.PedidoEventoPublisher;
@@ -175,6 +176,20 @@ class PedidoFlujoTests {
                 .andExpect(jsonPath("$.estado").value("CREADO"));
     }
 
+    // El rollback local no alcanza al catálogo: si RabbitMQ falla tras descontar, se repone.
+    @Test
+    void sinMensajeriaAlAceptarSeReponeElStockYDevuelve503() throws Exception {
+        long id = crearPedido(usuario("cli1", "Cliente"));
+        doThrow(new MensajeriaNoDisponibleException(new RuntimeException("broker caído")))
+                .when(productor).publicar(eq("pedido.aceptado"), any(PedidoEvento.class));
+
+        cambiarEstado(id, "ACEPTADO", usuario("op", "Operador"))
+                .andExpect(status().isServiceUnavailable());
+        verify(catalogo).descontarStock(anyList());
+        verify(catalogo).reponerStock(List.of(
+                new MovimientoStock(1L, 2), new MovimientoStock(2L, 1)));
+    }
+
     @Test
     void cancelarPedidoAceptadoReponeStock() throws Exception {
         long id = crearPedido(usuario("cli1", "Cliente"));
@@ -190,7 +205,7 @@ class PedidoFlujoTests {
         verify(catalogo, never()).reponerStock(any());
     }
 
-    // Semana 08: la operación principal se confirma y luego se publica el evento.
+    // Después de guardar el pedido se publica el evento que corresponde a su estado.
     @Test
     void crearPedidoPublicaPedidoCreado() throws Exception {
         long id = crearPedido(usuario("cli1", "Cliente"));

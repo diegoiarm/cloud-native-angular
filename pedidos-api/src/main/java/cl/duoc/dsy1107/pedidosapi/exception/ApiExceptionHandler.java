@@ -26,8 +26,8 @@ public class ApiExceptionHandler {
         return error(HttpStatus.CONFLICT, e.getMessage());
     }
 
-    @ExceptionHandler(CatalogoNoDisponibleException.class)
-    ResponseEntity<Map<String, Object>> catalogoNoDisponible(CatalogoNoDisponibleException e) {
+    @ExceptionHandler({CatalogoNoDisponibleException.class, MensajeriaNoDisponibleException.class})
+    ResponseEntity<Map<String, Object>> servicioNoDisponible(RuntimeException e) {
         return error(HttpStatus.SERVICE_UNAVAILABLE, e.getMessage());
     }
 

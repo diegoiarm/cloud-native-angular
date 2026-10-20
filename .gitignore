@@ -27,3 +27,7 @@ npm-debug.log*
 Thumbs.db
 # Base H2 del perfil local
 */data/
+
+# Credenciales locales (por ejemplo infra/rabbitmq-cloud/.env)
+.env
+!.env.example

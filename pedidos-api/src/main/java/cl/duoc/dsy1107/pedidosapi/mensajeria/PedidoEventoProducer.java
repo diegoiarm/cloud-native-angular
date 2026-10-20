@@ -1,9 +1,11 @@
 package cl.duoc.dsy1107.pedidosapi.mensajeria;
 
 import cl.duoc.dsy1107.pedidosapi.config.RabbitMQConfig;
+import cl.duoc.dsy1107.pedidosapi.exception.MensajeriaNoDisponibleException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Map;
+import org.springframework.amqp.AmqpException;
 import org.springframework.amqp.core.MessagePostProcessor;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
@@ -43,6 +45,9 @@ public class PedidoEventoProducer implements PedidoEventoPublisher {
                     RabbitMQConfig.TOPIC_EXCHANGE, routingKey, json, conCabeceras);
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("No fue posible serializar el evento", e);
+        } catch (AmqpException e) {
+            // PedidoService no conoce RabbitMQ: recibe una excepción propia del dominio.
+            throw new MensajeriaNoDisponibleException(e);
         }
     }
 }

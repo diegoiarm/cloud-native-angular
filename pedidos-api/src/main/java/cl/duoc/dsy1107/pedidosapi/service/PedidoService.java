@@ -6,6 +6,7 @@ import cl.duoc.dsy1107.pedidosapi.client.ProductoCatalogo;
 import cl.duoc.dsy1107.pedidosapi.config.RabbitMQConfig;
 import cl.duoc.dsy1107.pedidosapi.dto.CrearPedidoRequest;
 import cl.duoc.dsy1107.pedidosapi.dto.PedidoResponse;
+import cl.duoc.dsy1107.pedidosapi.exception.MensajeriaNoDisponibleException;
 import cl.duoc.dsy1107.pedidosapi.exception.PedidoNoEncontradoException;
 import cl.duoc.dsy1107.pedidosapi.exception.TransicionInvalidaException;
 import cl.duoc.dsy1107.pedidosapi.mensajeria.PedidoEvento;
@@ -90,16 +91,22 @@ public class PedidoService {
         Pedido guardado = repository.saveAndFlush(pedido);
         // Tareas posteriores: cocina al aceptar, despacho y aviso al cliente al despachar.
         if (nuevo == EstadoPedido.ACEPTADO) {
-            publicar(RabbitMQConfig.PEDIDO_ACEPTADO, guardado);
+            try {
+                publicar(RabbitMQConfig.PEDIDO_ACEPTADO, guardado);
+            } catch (MensajeriaNoDisponibleException e) {
+                // El rollback no alcanza al catálogo, que es otro servicio: se compensa a mano.
+                catalogo.reponerStock(movimientos(pedido));
+                throw e;
+            }
         } else if (nuevo == EstadoPedido.DESPACHADO) {
             publicar(RabbitMQConfig.PEDIDO_DESPACHADO, guardado);
         }
         return PedidoResponse.de(guardado);
     }
 
-    // La operación principal ya quedó confirmada en la base de datos: el evento solo
-    // informa que ocurrió. La consistencia entre transacción y publicación se profundiza
-    // más adelante, junto con ACK/NACK, reintentos y DLQ.
+    // Se publica dentro de la transacción: si RabbitMQ no acepta el evento, la operación
+    // se revierte y la API responde 503, así no queda un pedido aceptado sin su aviso a
+    // cocina. El evento solo informa que ocurrió; no reemplaza el estado en la base.
     private void publicar(String routingKey, Pedido pedido) {
         productor.publicar(routingKey, new PedidoEvento(
                 pedido.getId(),
