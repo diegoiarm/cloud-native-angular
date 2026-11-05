@@ -9,6 +9,10 @@ Monorepo con los tres componentes de la entrega.
 | `pedidos-api/` | Microservicio de pedidos (Spring Boot 3.4, Java 21) | 8080 |
 | `catalogo-api/` | Microservicio de catálogo y stock | 8081 |
 | `rabbit-admin-api/` | Microservicio administrador de RabbitMQ (queues, exchanges, bindings) | 8082 |
+| `ms-productor-sensores/` | Productor REST de lecturas hacia Kafka (S13 / EP5) | 8081 |
+| `ms-monitor-sensores/` | Consumidor Kafka de lecturas y alertas (S13 / EP5) | 8082 |
+| `kafka-admin-api/` | Administrador Kafka por REST: topics, grupos y lag (EP5 / EP6) | 8084 |
+| `kafka-lab/` | Kafka KRaft + Kafbat UI, scripts y clúster de 3 brokers (S12 / EP6) | 9092 / 8090 · clúster 9092-9094 / 8091 |
 | `infra/` | OpenAPI para AWS API Gateway, scripts de despliegue y clúster RabbitMQ | — |
 | `monitor/` | Monitor de colas por la Management API (Python, sin dependencias) | — |
 | `docker-compose.yml` | Broker RabbitMQ single-node para la mensajería asíncrona | 5672 / 15672 |
@@ -32,6 +36,7 @@ catálogo, así que el catálogo aplica sus propias reglas.
 - Java 21 y Maven
 - Node.js 22+
 - PostgreSQL, o bien el perfil `local` que usa H2 y no necesita instalar nada
+- Docker Desktop para el laboratorio Kafka de `kafka-lab/` y RabbitMQ
 
 ## Entra ID
 
@@ -253,18 +258,109 @@ La conexión se parametriza con `RABBITMQ_ADDRESSES` (por defecto `localhost:567
 `RABBITMQ_USER` y `RABBITMQ_PASSWORD`. `labuser` / `labpass` son solo para el laboratorio
 local; en cloud hay que usar credenciales propias.
 
+## Kafka (Semanas 12-13 / EP5-EP6)
+
+Implementación paralela a RabbitMQ, según los documentos `03` y `01` de S12/S13 y
+las hojas de ruta EP5/EP6. **No reemplaza** la mensajería de Pedidos360: el
+laboratorio RabbitMQ sigue igual.
+
+```
+ms-productor-sensores ──POST /api/lecturas──► Kafka sensores-temperatura
+                                            └► sensores-alertas (si temperatura >= 30 C)
+Kafka ──@KafkaListener──► ms-monitor-sensores ──GET /api/monitor/*──► navegador
+kafka-admin-api ──AdminClient──► topics, consumer groups, offsets y lag
+Kafbat UI ──────────────────────► http://localhost:8090
+```
+
+La guía completa (S12 y S13, experimentos, DLT y clúster de 3 brokers) está en
+[`kafka-lab/README.md`](kafka-lab/README.md).
+
+### Topics
+
+| Topic | Particiones | RF local | RF clúster | Uso |
+|---|---|---|---|---|
+| `sensores-temperatura` | 3 | 1 | 3 | Lecturas `sensorId, temperatura, unidad, secuencia` |
+| `sensores-alertas` | 3 | 1 | 3 | Alertas cuando se supera el umbral |
+| `sensores-temperatura.DLT` | 3 | 1 | 3 | Mensajes que agotaron reintentos |
+| `sensores-alertas.DLT` | 3 | 1 | 3 | Idem para alertas |
+
+La clave es `sensorId`, de modo que los eventos de un mismo sensor mantienen su
+orden dentro de una partición.
+
+### Levantar el laboratorio
+
+```bash
+docker compose -f kafka-lab/compose.yaml up -d
+powershell -ExecutionPolicy Bypass -File kafka-lab/scripts/02_crear_topic.ps1
+
+cd ms-productor-sensores && ./mvnw spring-boot:run   # 8081
+cd ms-monitor-sensores   && ./mvnw spring-boot:run   # 8082
+
+powershell -ExecutionPolicy Bypass -File kafka-lab/scripts/05_enviar_6_lecturas.ps1
+```
+
+> **Puertos:** el documento S13 fija `8081` y `8082`, pero ya los usan
+> `catalogo-api` y `rabbit-admin-api`. No ejecute ambos pares a la vez o
+> arranque los servicios Kafka con `SERVER_PORT=8085` / `SERVER_PORT=8086`.
+
+### Endpoints
+
+| Método | Ruta | Qué hace |
+|---|---|---|
+| POST | `/api/lecturas` | Publica una lectura; `202` con partición y offset |
+| GET | `/api/lecturas/estado` | Bootstrap, topics, umbral y réplicas |
+| GET | `/api/monitor/lecturas` | Últimas 50 lecturas en memoria |
+| GET | `/api/monitor/alertas` | Últimas 50 alertas en memoria |
+| GET | `/api/monitor/estado` | Grupo y contadores |
+| GET | `/api/admin/kafka/cluster` | Cluster ID, controller y brokers |
+| GET/POST | `/api/admin/kafka/topics` | Listar o crear topics |
+| GET/DELETE | `/api/admin/kafka/topics/{nombre}` | Detalle o eliminación (los topics del laboratorio están protegidos) |
+| GET | `/api/admin/kafka/groups` | Consumer groups |
+| GET | `/api/admin/kafka/groups/{grupo}/lag` | Offset actual, final y lag |
+
+`kafka-admin-api` exige el scope `Pedidos.Read` y el rol `Admin`, igual que
+`rabbit-admin-api`.
+
+### Reintentos y DLT
+
+Los consumers usan `ErrorHandlingDeserializer` y `DefaultErrorHandler`:
+1 intento + 2 reintentos con 1 s de espera. Si el mensaje sigue fallando, se
+publica en `<topic>.DLT` y el original se confirma. Para demostrarlo, publique
+una lectura con `sensorId = "sensor-fallo"`:
+
+```bash
+powershell -ExecutionPolicy Bypass -File kafka-lab/scripts/09_probar_dlt.ps1
+```
+
+### Clúster de 3 brokers (EP6)
+
+```bash
+docker compose -f kafka-lab/compose.cluster.yaml up -d
+powershell -ExecutionPolicy Bypass -File kafka-lab/scripts/07_crear_topicos_cluster.ps1
+powershell -ExecutionPolicy Bypass -File kafka-lab/scripts/08_verificar_cluster.ps1
+```
+
+Crea los dos topics con 3 particiones y RF3, y deja la UI en
+http://localhost:8091. No levantar este compose junto con el de un broker:
+comparten el puerto 9092.
+
 ## Pruebas
 
 ```bash
-cd pedidos-api      && mvn test      # 49 tests
-cd catalogo-api     && mvn test      # 14 tests
-cd rabbit-admin-api && mvn test      # 20 tests
-cd cloud-native-angular && npm test
+cd pedidos-api        && mvn test      # 49 tests
+cd catalogo-api       && mvn test      # 14 tests
+cd rabbit-admin-api   && mvn test      # 20 tests
+cd ms-productor-sensores && mvn test
+cd ms-monitor-sensores   && mvn test
+cd kafka-admin-api       && mvn test
+cd cloud-native-angular  && npm test
 ```
 
 Cubren los rechazos 401 y 403, los permisos de cada rol, las transiciones de estado, el
 descuento de stock, el contrato HTTP entre los microservicios, la topología de RabbitMQ, el
-ACK/NACK de los consumers y las validaciones del administrador. No necesitan broker.
+ACK/NACK de los consumers y las validaciones del administrador. Los tests de Kafka cubren la
+validación del DTO, la publicación de alertas en el segundo topic, el tope de 50 en memoria,
+el retry/DLT configurado y las reglas del administrador. No necesitan broker.
 
 ## Despliegue
 
