@@ -1,0 +1,34 @@
+server:
+  port: ${PORT:8084}
+
+spring:
+  application:
+    name: kafka-admin-api
+  kafka:
+    # Laboratorio de un broker. Para el cluster EP6 use
+    # KAFKA_BOOTSTRAP_SERVERS=localhost:9092,localhost:9093,localhost:9094
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    admin:
+      # Esta API no declara topics al arrancar: administra bajo demanda.
+      auto-startup: false
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: https://login.microsoftonline.com/${ENTRA_TENANT_ID:6bf42f50-ccc9-46e4-ae46-2b6534675957}/v2.0
+          jwk-set-uri: https://login.microsoftonline.com/${ENTRA_TENANT_ID:6bf42f50-ccc9-46e4-ae46-2b6534675957}/discovery/v2.0/keys
+          # Solo se aceptan tokens emitidos para la API (App_DSY1107_API).
+          audiences:
+            - ${ENTRA_API_CLIENT_ID:371e0368-c37d-4768-9266-0212824e67ba}
+            - api://${ENTRA_API_CLIENT_ID:371e0368-c37d-4768-9266-0212824e67ba}
+
+kafka-admin:
+  # Topología del laboratorio: se consulta, pero no se elimina por REST.
+  topologia-protegida: '^sensores-(temperatura|alertas)(\.DLT)?$|^__consumer_offsets$'
+  particiones: ${KAFKA_PARTICIONES:3}
+  replicas: ${KAFKA_REPLICAS:1}
+  retencion-ms: ${KAFKA_RETENCION_MS:86400000}
+
+# Orígenes permitidos por CORS, separados por coma.
+cors:
+  allowed-origins: ${CORS_ORIGINS:http://localhost:4200}

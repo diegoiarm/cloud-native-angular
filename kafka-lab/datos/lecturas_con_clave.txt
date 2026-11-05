@@ -1,0 +1,6 @@
+sensor-A|{"sensorId":"sensor-A","temperatura":21.5,"unidad":"C","secuencia":1}
+sensor-B|{"sensorId":"sensor-B","temperatura":22.1,"unidad":"C","secuencia":2}
+sensor-A|{"sensorId":"sensor-A","temperatura":23.4,"unidad":"C","secuencia":3}
+sensor-B|{"sensorId":"sensor-B","temperatura":31.2,"unidad":"C","secuencia":4}
+sensor-A|{"sensorId":"sensor-A","temperatura":24.0,"unidad":"C","secuencia":5}
+sensor-B|{"sensorId":"sensor-B","temperatura":32.8,"unidad":"C","secuencia":6}

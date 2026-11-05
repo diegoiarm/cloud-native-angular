@@ -1,0 +1,26 @@
+server:
+  port: ${SERVER_PORT:8081}
+
+spring:
+  application:
+    name: ms-productor-sensores
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+      properties:
+        enable.idempotence: true
+        spring.json.add.type.headers: true
+    admin:
+      # Declara los topics y las DLT al arrancar (KafkaTopicsConfig).
+      auto-startup: ${KAFKA_ADMIN_AUTO_STARTUP:true}
+
+sensores:
+  topico-lecturas: ${TOPICO_LECTURAS:sensores-temperatura}
+  topico-alertas: ${TOPICO_ALERTAS:sensores-alertas}
+  particiones: ${KAFKA_PARTICIONES:3}
+  replicas: ${KAFKA_REPLICAS:1}
+  retencion-ms: ${KAFKA_RETENCION_MS:86400000}
+  umbral-alerta-c: ${UMBRAL_ALERTA_C:30.0}

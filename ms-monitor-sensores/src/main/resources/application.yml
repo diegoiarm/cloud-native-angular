@@ -1,0 +1,38 @@
+server:
+  port: ${SERVER_PORT:8082}
+
+spring:
+  application:
+    name: ms-monitor-sensores
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      # Documento 01 S13: grupo, deserializador JSON, trusted packages y offset reset.
+      group-id: ${GRUPO_KAFKA:grupo-monitor-s13}
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      properties:
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
+        spring.json.trusted.packages: "cl.duoc.dsy1107.*"
+        spring.json.use.type.headers: true
+    producer:
+      # Necesario para que DeadLetterPublishingRecoverer publique en <topic>.DLT.
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    listener:
+      ack-mode: record
+    admin:
+      auto-startup: ${KAFKA_ADMIN_AUTO_STARTUP:true}
+
+sensores:
+  topico-lecturas: ${TOPICO_LECTURAS:sensores-temperatura}
+  topico-alertas: ${TOPICO_ALERTAS:sensores-alertas}
+  grupo: ${GRUPO_KAFKA:grupo-monitor-s13}
+  maximo-memoria: ${MAXIMO_MEMORIA:50}
+  particiones: ${KAFKA_PARTICIONES:3}
+  replicas: ${KAFKA_REPLICAS:1}
+  lab:
+    # Enviar una lectura con este sensorId demuestra retry y DLT (script 09).
+    sensor-fallo: ${SENSOR_FALLO:sensor-fallo}

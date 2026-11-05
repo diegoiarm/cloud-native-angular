@@ -1,0 +1,106 @@
+# Laboratorio EP6: cluster Kafka KRaft de tres brokers (documento 05 S12/S13).
+#
+# Topologia:
+#   kafka1 -> host 9092, interno kafka1:19092, controller kafka1:19093
+#   kafka2 -> host 9093, interno kafka2:19092, controller kafka2:19093
+#   kafka3 -> host 9094, interno kafka3:19092, controller kafka3:19093
+#   Kafbat UI -> http://localhost:8091 (bootstrap interno de los tres brokers)
+#
+# Uso:
+#   docker compose -f kafka-lab/compose.cluster.yaml up -d
+#   powershell -ExecutionPolicy Bypass -File kafka-lab/scripts/07_crear_topicos_cluster.ps1
+#   powershell -ExecutionPolicy Bypass -File kafka-lab/scripts/08_verificar_cluster.ps1
+#
+# No levantar este compose junto con kafka-lab/compose.yaml: ambos publican el
+# puerto 9092. El cluster usa 9092, 9093 y 9094 en el host.
+#
+# Los factores internos de Kafka se declaran en 3 para que __consumer_offsets y
+# __transaction_state sobrevivan a la caida de un broker. Los topics de negocio
+# se crean con replication-factor=3 desde el script 07.
+
+x-kafka-common: &kafka-common
+  image: apache/kafka:4.2.2
+  environment: &kafka-common-env
+    CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+    KAFKA_PROCESS_ROLES: broker,controller
+    KAFKA_LISTENERS: EXTERNAL://:9092,INTERNAL://:19092,CONTROLLER://:19093
+    KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+    KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+    KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka1:19093,2@kafka2:19093,3@kafka3:19093
+    KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: EXTERNAL:PLAINTEXT,INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+    KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+    KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+    KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+    KAFKA_MIN_INSYNC_REPLICAS: 2
+    KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    KAFKA_NUM_PARTITIONS: 3
+    KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+    KAFKA_LOG_DIRS: /var/lib/kafka/data
+  healthcheck:
+    test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1"]
+    interval: 10s
+    timeout: 10s
+    retries: 15
+    start_period: 25s
+
+services:
+  kafka1:
+    <<: *kafka-common
+    container_name: pedidos360-kafka1
+    hostname: kafka1
+    ports:
+      - "9092:9092"
+    environment:
+      <<: *kafka-common-env
+      KAFKA_NODE_ID: 1
+      KAFKA_ADVERTISED_LISTENERS: EXTERNAL://localhost:9092,INTERNAL://kafka1:19092
+    volumes:
+      - kafka1_data:/var/lib/kafka/data
+
+  kafka2:
+    <<: *kafka-common
+    container_name: pedidos360-kafka2
+    hostname: kafka2
+    ports:
+      - "9093:9092"
+    environment:
+      <<: *kafka-common-env
+      KAFKA_NODE_ID: 2
+      KAFKA_ADVERTISED_LISTENERS: EXTERNAL://localhost:9093,INTERNAL://kafka2:19092
+    volumes:
+      - kafka2_data:/var/lib/kafka/data
+
+  kafka3:
+    <<: *kafka-common
+    container_name: pedidos360-kafka3
+    hostname: kafka3
+    ports:
+      - "9094:9092"
+    environment:
+      <<: *kafka-common-env
+      KAFKA_NODE_ID: 3
+      KAFKA_ADVERTISED_LISTENERS: EXTERNAL://localhost:9094,INTERNAL://kafka3:19092
+    volumes:
+      - kafka3_data:/var/lib/kafka/data
+
+  kafka-ui:
+    image: ghcr.io/kafbat/kafka-ui:v1.5.0
+    container_name: pedidos360-kafka-ui-cluster
+    ports:
+      - "8091:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: DSY1107-cluster
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka1:19092,kafka2:19092,kafka3:19092
+      KAFKA_CLUSTERS_0_READONLY: "false"
+    depends_on:
+      kafka1:
+        condition: service_healthy
+      kafka2:
+        condition: service_healthy
+      kafka3:
+        condition: service_healthy
+
+volumes:
+  kafka1_data:
+  kafka2_data:
+  kafka3_data:
