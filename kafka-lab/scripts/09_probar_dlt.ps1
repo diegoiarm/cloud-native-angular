@@ -8,15 +8,20 @@
 #
 # Uso desde la raiz del repositorio:
 #   powershell -ExecutionPolicy Bypass -File kafka-lab/scripts/09_probar_dlt.ps1
+#   (agregar -Cluster si se usa kafka-lab/compose.cluster.yaml)
 
 param(
-    [string]$Url = "http://localhost:8081/api/lecturas"
+    [string]$Url = "http://localhost:8085/api/lecturas",
+    [switch]$Cluster
 )
 
 $ErrorActionPreference = "Stop"
 
 $repo = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
-$compose = Join-Path $repo "kafka-lab/compose.yaml"
+$composeFile = if ($Cluster) { "kafka-lab/compose.cluster.yaml" } else { "kafka-lab/compose.yaml" }
+$compose = Join-Path $repo $composeFile
+$servicio = if ($Cluster) { "kafka1" } else { "kafka" }
+$bootstrap = if ($Cluster) { "kafka1:19092" } else { "kafka:9093" }
 
 $body = @{
     sensorId    = "sensor-fallo"
@@ -33,9 +38,9 @@ Start-Sleep -Seconds 6
 
 Write-Host ""
 Write-Host "Contenido de sensores-temperatura.DLT:"
-docker compose -f $compose exec -T kafka `
+docker compose -f $compose exec -T $servicio `
     /opt/kafka/bin/kafka-console-consumer.sh `
-    --bootstrap-server kafka:9093 `
+    --bootstrap-server $bootstrap `
     --topic sensores-temperatura.DLT `
     --from-beginning --max-messages 1 --timeout-ms 10000 `
     --property 'print.key=true' `

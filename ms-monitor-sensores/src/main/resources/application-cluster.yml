@@ -1,0 +1,12 @@
+# Perfil del cluster de 3 brokers (kafka-lab/compose.cluster.yaml, EP6).
+#
+#   ./mvnw spring-boot:run -Dspring-boot.run.profiles=cluster
+#
+# Con este perfil los topics y las DLT se declaran con RF3 aunque el servicio
+# arranque antes que el script 07, así que el orden de arranque no importa.
+spring:
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092,localhost:9093,localhost:9094}
+
+sensores:
+  replicas: ${KAFKA_REPLICAS:3}

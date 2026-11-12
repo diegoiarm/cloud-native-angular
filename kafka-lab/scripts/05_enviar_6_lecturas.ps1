@@ -1,14 +1,13 @@
 # Documento 01 S13, seccion 4, paso 7: enviar seis lecturas por REST al productor.
-# Requiere ms-productor-sensores en http://localhost:8081 (o el puerto indicado).
+# Requiere ms-productor-sensores en http://localhost:8085 (o el puerto indicado).
 # Las lecturas con temperatura >= UMBRAL_ALERTA_C (30.0 por defecto) tambien
 # generan un evento en el segundo topic, sensores-alertas.
 #
 # Uso desde la raiz del repositorio:
 #   powershell -ExecutionPolicy Bypass -File kafka-lab/scripts/05_enviar_6_lecturas.ps1
-#   powershell -ExecutionPolicy Bypass -File kafka-lab/scripts/05_enviar_6_lecturas.ps1 -Url http://localhost:8085/api/lecturas
 
 param(
-    [string]$Url = "http://localhost:8081/api/lecturas"
+    [string]$Url = "http://localhost:8085/api/lecturas"
 )
 
 $ErrorActionPreference = "Stop"
@@ -31,4 +30,4 @@ foreach ($lectura in $lecturas) {
 
 Write-Host ""
 Write-Host "Las respuestas 202 con particion y offset confirman la publicacion en el broker."
-Write-Host "Consulte el monitor en http://localhost:8082/api/monitor/lecturas"
+Write-Host "Consulte el monitor en http://localhost:8086/api/monitor/lecturas"
