@@ -1,6 +1,8 @@
 package cl.duoc.dsy1107.monitorsensores.config;
 
 import org.apache.kafka.clients.admin.NewTopic;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.config.TopicConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,9 +29,22 @@ public class KafkaConsumerConfig {
 
     private static final Logger log = LoggerFactory.getLogger(KafkaConsumerConfig.class);
 
+    /** Sufijo de las DLT; coincide con los topics que declaran los servicios y el script 07. */
+    public static final String SUFIJO_DLT = ".DLT";
+
+    /**
+     * Destino explícito: misma partición en {@code <topic>.DLT}. Sin esto, Spring
+     * Kafka 3.3 usa {@code <topic>-dlt}, que no existe porque el broker tiene
+     * desactivada la creación automática de topics.
+     */
+    public static TopicPartition destinoDlt(ConsumerRecord<?, ?> registro) {
+        return new TopicPartition(registro.topic() + SUFIJO_DLT, registro.partition());
+    }
+
     @Bean
     DefaultErrorHandler errorHandler(KafkaTemplate<Object, Object> kafkaTemplate) {
-        DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(kafkaTemplate);
+        DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(
+                kafkaTemplate, (registro, excepcion) -> destinoDlt(registro));
         DefaultErrorHandler handler = new DefaultErrorHandler(recoverer, new FixedBackOff(1000L, 2L));
         handler.setRetryListeners((registro, excepcion, intento) -> log.warn(
                 "[KAFKA] intento {}/3 fallido en {}-{} offset {} ({}); se reintenta o va a {}.DLT",
@@ -47,7 +62,7 @@ public class KafkaConsumerConfig {
             @Value("${sensores.topico-lecturas:sensores-temperatura}") String nombre,
             @Value("${sensores.particiones:3}") int particiones,
             @Value("${sensores.replicas:1}") int replicas) {
-        return topic(nombre + ".DLT", particiones, replicas);
+        return topic(nombre + SUFIJO_DLT, particiones, replicas);
     }
 
     @Bean
@@ -55,7 +70,7 @@ public class KafkaConsumerConfig {
             @Value("${sensores.topico-alertas:sensores-alertas}") String nombre,
             @Value("${sensores.particiones:3}") int particiones,
             @Value("${sensores.replicas:1}") int replicas) {
-        return topic(nombre + ".DLT", particiones, replicas);
+        return topic(nombre + SUFIJO_DLT, particiones, replicas);
     }
 
     private static NewTopic topic(String nombre, int particiones, int replicas) {
