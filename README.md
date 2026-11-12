@@ -9,8 +9,8 @@ Monorepo con los tres componentes de la entrega.
 | `pedidos-api/` | Microservicio de pedidos (Spring Boot 3.4, Java 21) | 8080 |
 | `catalogo-api/` | Microservicio de catálogo y stock | 8081 |
 | `rabbit-admin-api/` | Microservicio administrador de RabbitMQ (queues, exchanges, bindings) | 8082 |
-| `ms-productor-sensores/` | Productor REST de lecturas hacia Kafka (S13 / EP5) | 8081 |
-| `ms-monitor-sensores/` | Consumidor Kafka de lecturas y alertas (S13 / EP5) | 8082 |
+| `ms-productor-sensores/` | Productor REST de lecturas hacia Kafka (S13 / EP5) | 8085 |
+| `ms-monitor-sensores/` | Consumidor Kafka de lecturas y alertas (S13 / EP5) | 8086 |
 | `kafka-admin-api/` | Administrador Kafka por REST: topics, grupos y lag (EP5 / EP6) | 8084 |
 | `kafka-lab/` | Kafka KRaft + Kafbat UI, scripts y clúster de 3 brokers (S12 / EP6) | 9092 / 8090 · clúster 9092-9094 / 8091 |
 | `infra/` | OpenAPI para AWS API Gateway, scripts de despliegue y clúster RabbitMQ | — |
@@ -293,15 +293,16 @@ orden dentro de una partición.
 docker compose -f kafka-lab/compose.yaml up -d
 powershell -ExecutionPolicy Bypass -File kafka-lab/scripts/02_crear_topic.ps1
 
-cd ms-productor-sensores && ./mvnw spring-boot:run   # 8081
-cd ms-monitor-sensores   && ./mvnw spring-boot:run   # 8082
+cd ms-productor-sensores && ./mvnw spring-boot:run   # 8085
+cd ms-monitor-sensores   && ./mvnw spring-boot:run   # 8086
 
 powershell -ExecutionPolicy Bypass -File kafka-lab/scripts/05_enviar_6_lecturas.ps1
 ```
 
-> **Puertos:** el documento S13 fija `8081` y `8082`, pero ya los usan
-> `catalogo-api` y `rabbit-admin-api`. No ejecute ambos pares a la vez o
-> arranque los servicios Kafka con `SERVER_PORT=8085` / `SERVER_PORT=8086`.
+> **Puertos:** el documento S13 propone `8081` y `8082`, pero en este repositorio
+> los usan `catalogo-api` y `rabbit-admin-api`. Por eso el productor queda en
+> `8085` y el monitor en `8086`, y todo el sistema (RabbitMQ y Kafka) puede
+> correr a la vez. `SERVER_PORT` sigue permitiendo cambiarlos.
 
 ### Endpoints
 
@@ -338,11 +339,20 @@ powershell -ExecutionPolicy Bypass -File kafka-lab/scripts/09_probar_dlt.ps1
 docker compose -f kafka-lab/compose.cluster.yaml up -d
 powershell -ExecutionPolicy Bypass -File kafka-lab/scripts/07_crear_topicos_cluster.ps1
 powershell -ExecutionPolicy Bypass -File kafka-lab/scripts/08_verificar_cluster.ps1
+
+cd ms-productor-sensores && ./mvnw spring-boot:run -Dspring-boot.run.profiles=cluster
+cd ms-monitor-sensores   && ./mvnw spring-boot:run -Dspring-boot.run.profiles=cluster
+cd kafka-admin-api       && ./mvnw spring-boot:run -Dspring-boot.run.profiles=cluster
 ```
 
 Crea los dos topics con 3 particiones y RF3, y deja la UI en
 http://localhost:8091. No levantar este compose junto con el de un broker:
 comparten el puerto 9092.
+
+El perfil `cluster` conecta los servicios a los tres brokers y declara topics y
+DLT con RF3, así que da igual si los servicios arrancan antes o después del
+script 07. Los scripts 06 y 09 aceptan `-Cluster` para leer del clúster. Las
+variables disponibles están en [`kafka-lab/.env.example`](kafka-lab/.env.example).
 
 ## Pruebas
 

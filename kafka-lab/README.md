@@ -16,8 +16,8 @@ mensajería de Pedidos360.
 |---|---|---|
 | Kafka KRaft (1 broker) | `localhost:9092` / `kafka:9093` interno | Broker + controller |
 | Kafbat UI | http://localhost:8090 | Topics, offsets, grupos |
-| `ms-productor-sensores` | http://localhost:8081/api/lecturas | Publica lecturas por REST |
-| `ms-monitor-sensores` | http://localhost:8082/api/monitor/lecturas | Consume y muestra en memoria |
+| `ms-productor-sensores` | http://localhost:8085/api/lecturas | Publica lecturas por REST |
+| `ms-monitor-sensores` | http://localhost:8086/api/monitor/lecturas | Consume y muestra en memoria |
 | `kafka-admin-api` | http://localhost:8084/api/admin/kafka | Administración por código |
 | Cluster KRaft | `localhost:9092,9093,9094` / UI 8091 | 3 brokers, RF3 para EP6 |
 
@@ -38,19 +38,13 @@ brokers y 3 réplicas.
 
 - JDK 21 y Maven (o los wrappers incluidos).
 - Docker Desktop abierto.
-- Puertos libres: `9092`, `8090`, `8081`, `8082`, `8084`.
+- Puertos libres: `9092`, `8090`, `8084`, `8085`, `8086`.
 
-> **Puertos en conflicto:** el documento S13 fija productor `8081` y monitor
-> `8082`, pero en este repositorio `catalogo-api` ya usa `8081` y
-> `rabbit-admin-api` usa `8082`. No ejecute ambos pares a la vez. Si necesita
-> correrlos juntos, arranque los servicios Kafka con `SERVER_PORT`:
->
-> ```powershell
-> $env:SERVER_PORT=8085   # en la terminal del productor
-> $env:SERVER_PORT=8086   # en la terminal del monitor
-> ```
->
-> y use `-Url http://localhost:8085/api/lecturas` en los scripts.
+> **Puertos:** el documento S13 propone productor `8081` y monitor `8082`, pero
+> en este repositorio `catalogo-api` usa `8081` y `rabbit-admin-api` usa `8082`.
+> Por eso el productor queda en `8085` y el monitor en `8086`: Pedidos360 con
+> RabbitMQ y el laboratorio Kafka pueden correr a la vez. Los scripts ya apuntan
+> a `8085`; `SERVER_PORT` y `-Url` permiten cambiarlo.
 
 ## 1. Levantar Kafka local
 
@@ -112,16 +106,16 @@ cd ms-monitor-sensores
 Estado:
 
 ```powershell
-curl http://localhost:8081/api/lecturas/estado
-curl http://localhost:8082/api/monitor/estado
+curl http://localhost:8085/api/lecturas/estado
+curl http://localhost:8086/api/monitor/estado
 ```
 
 Enviar seis lecturas por REST:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File kafka-lab/scripts/05_enviar_6_lecturas.ps1
-curl http://localhost:8082/api/monitor/lecturas
-curl http://localhost:8082/api/monitor/alertas
+curl http://localhost:8086/api/monitor/lecturas
+curl http://localhost:8086/api/monitor/alertas
 ```
 
 Contrato de una lectura:
@@ -156,7 +150,7 @@ eventos de cada uno **solo en memoria**.
   confirmados.
 - **Validación:** `secuencia = -5` debe responder `400`.
 - **Segundo grupo:** arranque otro monitor con
-  `GRUPO_KAFKA=grupo-auditoria-s13` y `SERVER_PORT=8083`; comprueba consumo
+  `GRUPO_KAFKA=grupo-auditoria-s13` y `SERVER_PORT=8087`; comprueba consumo
   independiente.
 - **Error controlado / DLT:** con productor y monitor activos ejecute
   `kafka-lab/scripts/09_probar_dlt.ps1`. El monitor reintenta dos veces y deja
@@ -202,12 +196,25 @@ Resultado esperado:
 - `__consumer_offsets` y `__transaction_state` con RF3.
 - Sin particiones sub-replicadas en operación normal.
 
-Para apuntar productor/monitor al cluster:
+Para apuntar productor, monitor y administrador al cluster, arránquelos con el
+perfil `cluster` (tres brokers como bootstrap y RF3):
 
 ```powershell
-$env:KAFKA_BOOTSTRAP_SERVERS="localhost:9092,localhost:9093,localhost:9094"
-$env:KAFKA_REPLICAS=3
+cd ms-productor-sensores && ./mvnw spring-boot:run -Dspring-boot.run.profiles=cluster
+cd ms-monitor-sensores   && ./mvnw spring-boot:run -Dspring-boot.run.profiles=cluster
+cd kafka-admin-api       && ./mvnw spring-boot:run -Dspring-boot.run.profiles=cluster
 ```
+
+Como el perfil declara los topics y las DLT con RF3, el orden de arranque no
+importa: si los servicios arrancan antes que el script 07, los topics igual
+quedan con 3 réplicas. Los scripts de verificación y DLT aceptan `-Cluster`:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File kafka-lab/scripts/06_verificar_grupo.ps1 -Grupo grupo-monitor-s13 -Cluster
+powershell -ExecutionPolicy Bypass -File kafka-lab/scripts/09_probar_dlt.ps1 -Cluster
+```
+
+Las variables disponibles están en `kafka-lab/.env.example`.
 
 UI del cluster: http://localhost:8091
 
@@ -230,7 +237,7 @@ cd kafka-admin-api       && ./mvnw test
 | Puerto 8090/8091 ocupado | Cambiar el puerto publicado en el compose correspondiente |
 | UI sin datos | Confirmar topics por CLI y bootstrap `kafka:9093` |
 | Sin lecturas al repetir consumo | Usar un grupo nuevo; el grupo anterior ya confirmó offsets |
-| `ReplicationFactor: 1` | Correcto en el laboratorio de un broker; use el cluster para RF3 |
+| `ReplicationFactor: 1` | Correcto en el laboratorio de un broker. En el cluster, los servicios deben usar el perfil `cluster`; si un topic quedó con RF1, elimínelo y vuelva a crearlo |
 | Monitor no ve lecturas | Revisar que productor y monitor usen el mismo `KAFKA_BOOTSTRAP_SERVERS` |
 | Mensaje en `.DLT` | Revisar el log del monitor; el error se agotó tras 3 intentos |
 

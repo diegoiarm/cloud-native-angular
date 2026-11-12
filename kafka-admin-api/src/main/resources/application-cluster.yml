@@ -1,0 +1,11 @@
+# Perfil del cluster de 3 brokers (kafka-lab/compose.cluster.yaml, EP6).
+#
+#   ./mvnw spring-boot:run -Dspring-boot.run.profiles=cluster
+#
+# Los topics creados por POST /api/admin/kafka/topics sin "replicas" usan RF3.
+spring:
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092,localhost:9093,localhost:9094}
+
+kafka-admin:
+  replicas: ${KAFKA_REPLICAS:3}
