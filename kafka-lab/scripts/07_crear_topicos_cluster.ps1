@@ -1,5 +1,5 @@
 # EP6 (documento 05 S12/S13): crear los dos topics con 3 particiones y RF3
-# en el cluster de tres brokers.
+# en el cluster de 3 ZooKeeper + 3 brokers (imagenes Confluent: kafka-topics).
 #
 # Uso desde la raiz del repositorio:
 #   docker compose -f kafka-lab/compose.cluster.yaml up -d
@@ -21,7 +21,7 @@ $dlts = @("sensores-temperatura.DLT", "sensores-alertas.DLT")
 foreach ($topico in ($topicos + $dlts)) {
     $retencion = if ($dlts -contains $topico) { 604800000 } else { $RetencionMs }
     Write-Host "Creando $topico (particiones=$Particiones, replicas=$Replicas, retention.ms=$retencion)..."
-    docker compose -f $compose exec -T kafka1 /opt/kafka/bin/kafka-topics.sh `
+    docker compose -f $compose exec -T kafka1 kafka-topics `
         --bootstrap-server kafka1:19092 --create --if-not-exists `
         --topic $topico --partitions $Particiones --replication-factor $Replicas `
         --config retention.ms=$retencion
@@ -30,10 +30,10 @@ foreach ($topico in ($topicos + $dlts)) {
 
 Write-Host ""
 Write-Host "Topics del cluster:"
-docker compose -f $compose exec -T kafka1 /opt/kafka/bin/kafka-topics.sh `
+docker compose -f $compose exec -T kafka1 kafka-topics `
     --bootstrap-server kafka1:19092 --list
 
 foreach ($topico in ($topicos + $dlts)) {
-    docker compose -f $compose exec -T kafka1 /opt/kafka/bin/kafka-topics.sh `
+    docker compose -f $compose exec -T kafka1 kafka-topics `
         --bootstrap-server kafka1:19092 --describe --topic $topico
 }

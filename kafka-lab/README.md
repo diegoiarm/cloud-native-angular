@@ -19,7 +19,7 @@ mensajería de Pedidos360.
 | `ms-productor-sensores` | http://localhost:8085/api/lecturas | Publica lecturas por REST |
 | `ms-monitor-sensores` | http://localhost:8086/api/monitor/lecturas | Consume y muestra en memoria |
 | `kafka-admin-api` | http://localhost:8084/api/admin/kafka | Administración por código |
-| Cluster KRaft | `localhost:9092,9093,9094` / UI 8091 | 3 brokers, RF3 para EP6 |
+| Cluster ZooKeeper | `localhost:9092,9093,9094` / ZK 2181-2183 / UI 8091 | 3 ZooKeeper + 3 brokers, RF3 para EP6 |
 
 ### Topics
 
@@ -179,7 +179,17 @@ cd kafka-admin-api
 ./mvnw spring-boot:run
 ```
 
-## 9. Cluster de 3 brokers y RF3 (EP6)
+## 9. Cluster de 3 ZooKeeper + 3 brokers y RF3 (EP6)
+
+La pauta EP6 pide tres nodos ZooKeeper y tres brokers. `compose.cluster.yaml`
+levanta esa topología con Confluent Platform 7.6 (Kafka 3.6), porque Apache
+Kafka 4.x ya no soporta ZooKeeper. El laboratorio de un broker de S12 sigue en
+KRaft porque es preparatorio.
+
+| Nodo | Rol |
+|---|---|
+| `zookeeper1..3` | Ensemble que guarda la metadata: brokers (`/brokers/ids`), controller (`/controller`) y configuración de topics. Tolera la caída de 1 nodo |
+| `kafka1..3` | Brokers que guardan las particiones y sus réplicas. Uno de ellos es el controller |
 
 No levantar junto con el compose de un broker: comparten el puerto 9092.
 
@@ -191,7 +201,8 @@ powershell -ExecutionPolicy Bypass -File kafka-lab/scripts/08_verificar_cluster.
 
 Resultado esperado:
 
-- 3 brokers registrados y un controller activo.
+- Ensemble ZooKeeper con 1 `leader` y 2 `follower`.
+- `/brokers/ids` = `[1, 2, 3]` y un `brokerid` en `/controller`.
 - Los dos topics con `Partitions: 3` y `ReplicationFactor: 3`.
 - `__consumer_offsets` y `__transaction_state` con RF3.
 - Sin particiones sub-replicadas en operación normal.
@@ -217,6 +228,27 @@ powershell -ExecutionPolicy Bypass -File kafka-lab/scripts/09_probar_dlt.ps1 -Cl
 Las variables disponibles están en `kafka-lab/.env.example`.
 
 UI del cluster: http://localhost:8091
+
+### Tolerancia a fallas (probado)
+
+Con `zookeeper3` (leader) y `kafka3` detenidos a la vez:
+
+- ZooKeeper elige otro leader entre los dos nodos restantes (mayoría 2 de 3).
+- Las particiones que lideraba `kafka3` pasan a otro broker y el ISR baja a 2,
+  que sigue cumpliendo `min.insync.replicas=2`: se puede publicar y consumir.
+- Al volver a iniciarlos, las réplicas se ponen al día y no quedan particiones
+  sub-replicadas.
+
+```powershell
+docker compose -f kafka-lab/compose.cluster.yaml stop zookeeper3 kafka3
+powershell -ExecutionPolicy Bypass -File kafka-lab/scripts/08_verificar_cluster.ps1
+docker compose -f kafka-lab/compose.cluster.yaml start zookeeper3 kafka3
+```
+
+`/brokers/ids` puede seguir mostrando el broker detenido durante unos segundos:
+su registro en ZooKeeper es efímero y desaparece al vencer la sesión (~18 s).
+Con dos brokers caídos el ISR quedaría en 1 y los productores con `acks=all`
+serían rechazados (`NotEnoughReplicas`), que es la protección esperada.
 
 ## 10. Pruebas
 
@@ -247,5 +279,5 @@ cd kafka-admin-api       && ./mvnw test
   pueden seguir disponibles en Kafka según la retención (24 h por defecto).
 - El laboratorio local usa `PLAINTEXT` y RF1: no es la topología final de EP5/EP6.
 - Las credenciales y tokens de Entra no se incluyen en este documento.
-- El cluster de 3 brokers es local; permite demostrar RF3 y tolerancia a fallas,
+- El cluster de 3 ZooKeeper + 3 brokers es local; permite demostrar RF3 y tolerancia a fallas,
   pero no reemplaza una arquitectura de producción.
