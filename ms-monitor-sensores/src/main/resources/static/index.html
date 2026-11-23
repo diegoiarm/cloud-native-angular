@@ -68,24 +68,35 @@
       return li;
     }
 
-    const fuente = new EventSource('/api/monitor/stream');
-    fuente.onopen = () => { conexion.textContent = 'conectado'; conexion.classList.add('activa'); };
-    fuente.onerror = () => { conexion.textContent = 'reconectando…'; conexion.classList.remove('activa'); };
+    const mostrarLectura = l => agregar('lecturas', item(
+      `${l.sensorId} · ${l.temperatura} ${l.unidad} · secuencia ${l.secuencia}`,
+      `partición ${l.particion} · offset ${l.offset}`));
 
-    fuente.addEventListener('lectura', e => {
-      const l = JSON.parse(e.data);
-      agregar('lecturas', item(
-        `${l.sensorId} · ${l.temperatura} ${l.unidad} · secuencia ${l.secuencia}`,
-        `partición ${l.particion} · offset ${l.offset}`));
-    });
+    const mostrarAlerta = a => agregar('alertas', item(
+      `${a.severidad} · ${a.sensorId} · ${a.temperatura} ${a.unidad}`,
+      `${a.motivo} · partición ${a.particion} · offset ${a.offset}`,
+      a.severidad));
 
-    fuente.addEventListener('alerta', e => {
-      const a = JSON.parse(e.data);
-      agregar('alertas', item(
-        `${a.severidad} · ${a.sensorId} · ${a.temperatura} ${a.unidad}`,
-        `${a.motivo} · partición ${a.particion} · offset ${a.offset}`,
-        a.severidad));
-    });
+    async function cargarHistorial() {
+      // La API devuelve primero lo más reciente; se recorre al revés para que
+      // prepend() deje lo más reciente arriba.
+      const [lecturas, alertas] = await Promise.all([
+        fetch('/api/monitor/lecturas').then(r => r.json()),
+        fetch('/api/monitor/alertas').then(r => r.json())
+      ]);
+      lecturas.reverse().forEach(mostrarLectura);
+      alertas.reverse().forEach(mostrarAlerta);
+    }
+
+    function suscribir() {
+      const fuente = new EventSource('/api/monitor/stream');
+      fuente.onopen = () => { conexion.textContent = 'conectado · en vivo'; conexion.classList.add('activa'); };
+      fuente.onerror = () => { conexion.textContent = 'reconectando…'; conexion.classList.remove('activa'); };
+      fuente.addEventListener('lectura', e => mostrarLectura(JSON.parse(e.data)));
+      fuente.addEventListener('alerta', e => mostrarAlerta(JSON.parse(e.data)));
+    }
+
+    cargarHistorial().catch(() => {}).finally(suscribir);
   </script>
 </body>
 </html>
