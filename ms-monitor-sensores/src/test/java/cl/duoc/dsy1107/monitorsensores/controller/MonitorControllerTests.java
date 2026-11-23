@@ -2,6 +2,7 @@ package cl.duoc.dsy1107.monitorsensores.controller;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import cl.duoc.dsy1107.monitorsensores.dto.AlertaRecibida;
@@ -13,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -61,6 +63,14 @@ class MonitorControllerTests {
                 .andExpect(jsonPath("$.servicio").value("ms-monitor-sensores"))
                 .andExpect(jsonPath("$.grupo").value("grupo-monitor-s13"))
                 .andExpect(jsonPath("$.topicoLecturas").value("sensores-temperatura"))
-                .andExpect(jsonPath("$.topicoAlertas").value("sensores-alertas"));
+                .andExpect(jsonPath("$.topicoAlertas").value("sensores-alertas"))
+                .andExpect(jsonPath("$.umbralAlertaC").value(30.0))
+                .andExpect(jsonPath("$.alzaBruscaC").value(5.0));
+    }
+
+    @Test
+    void streamAbreUnaConexionSse() throws Exception {
+        mockMvc.perform(get("/api/monitor/stream").accept(MediaType.TEXT_EVENT_STREAM))
+                .andExpect(request().asyncStarted());
     }
 }

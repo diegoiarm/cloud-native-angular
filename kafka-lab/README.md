@@ -26,7 +26,7 @@ mensajería de Pedidos360.
 | Topic | Particiones | RF local | RF cluster | Uso |
 |---|---|---|---|---|
 | `sensores-temperatura` | 3 | 1 | 3 | Contrato `sensorId, temperatura, unidad, secuencia` |
-| `sensores-alertas` | 3 | 1 | 3 | Alertas cuando la temperatura supera el umbral |
+| `sensores-alertas` | 3 | 1 | 3 | Alertas que publica el monitor al reaccionar (umbral o alza brusca) |
 | `sensores-temperatura.DLT` | 3 | 1 | 3 | Mensajes que agotaron reintentos |
 | `sensores-alertas.DLT` | 3 | 1 | 3 | Idem para alertas |
 
@@ -135,13 +135,47 @@ publicación, pero el monitor la mostrará cuando su listener la procese.
 Validación: `secuencia` negativa responde `400` (pruebe con `-5`). Si Kafka no
 está disponible, el productor responde `503`.
 
-## 6. Segundo topic y alertas
+## 6. Procesamiento reactivo: el monitor reacciona a cada lectura
 
-El productor publica siempre en `sensores-temperatura`. Si la temperatura es
-mayor o igual a `UMBRAL_ALERTA_C` (30.0 por defecto), además publica un
-`AlertaSensor` en `sensores-alertas`. El monitor tiene un consumer separado
-para cada topic (`TemperaturaConsumer` y `AlertaConsumer`) y guarda hasta 50
-eventos de cada uno **solo en memoria**.
+El productor solo ingiere: publica cada lectura en `sensores-temperatura` y
+responde `202` con partición y offset. **No decide si hay alerta.**
+
+`ms-monitor-sensores` consume cada lectura y reacciona en el momento
+(`TemperaturaConsumer` + `ReglasReaccion`):
+
+| Regla | Condición | Severidad |
+|---|---|---|
+| `UMBRAL` | temperatura >= `UMBRAL_ALERTA_C` (30.0) | ALTA |
+| `ALZA_BRUSCA` | subida >= `ALZA_BRUSCA_C` (5.0) respecto de la lectura anterior **del mismo sensor** | MEDIA |
+
+Si se cumple alguna, `PublicadorAlertas` publica un `AlertaSensor` en
+`sensores-alertas` con la misma clave `sensorId`. `AlertaConsumer` la recibe en
+el segundo topic. Si se cumplen las dos, sale una sola alerta ALTA con ambos
+motivos.
+
+`ALZA_BRUSCA` necesita recordar la última temperatura de cada sensor. Funciona
+porque la clave es `sensorId`: todas las lecturas de un sensor van a la misma
+partición y el consumer las recibe en orden.
+
+Si Kafka no confirma la alerta, el consumer lanza la excepción **antes** de
+guardar la lectura: el `DefaultErrorHandler` reintenta (sin duplicarla) y, si
+sigue fallando, la manda a `sensores-temperatura.DLT`.
+
+### En tiempo real
+
+- `GET /api/monitor/stream`: Server-Sent Events con un evento `lectura` por
+  cada lectura y un evento `alerta` por cada alerta, apenas se procesan.
+- http://localhost:8086/ : página que muestra las dos listas en vivo.
+
+Para ver la regla de alza brusca sin superar el umbral:
+
+```powershell
+curl -X POST http://localhost:8085/api/lecturas -H "Content-Type: application/json" -d '{"sensorId":"sensor-C","temperatura":20.0,"unidad":"C","secuencia":1}'
+curl -X POST http://localhost:8085/api/lecturas -H "Content-Type: application/json" -d '{"sensorId":"sensor-C","temperatura":26.0,"unidad":"C","secuencia":2}'
+curl http://localhost:8086/api/monitor/alertas   # MEDIA: ALZA_BRUSCA subió 6.0 C
+```
+
+Lecturas y alertas se guardan **solo en memoria** (hasta 50 de cada una).
 
 ## 7. Experimentos del documento S13
 
@@ -228,6 +262,15 @@ powershell -ExecutionPolicy Bypass -File kafka-lab/scripts/09_probar_dlt.ps1 -Cl
 Las variables disponibles están en `kafka-lab/.env.example`.
 
 UI del cluster: http://localhost:8091
+
+### Después de un apagado brusco
+
+Si Docker Desktop o el PC se apagaron con el clúster arriba, ZooKeeper conserva
+unos segundos el registro `/brokers/ids/N` de la sesión anterior y los brokers
+abortan al primer arranque (`node already exists`). Tienen `restart:
+unless-stopped`, así que vuelven a intentar solos y entran en unos 40 s.
+`up -d --wait` puede informar `unhealthy` durante ese reinicio: espere y
+confirme con el script 08.
 
 ### Tolerancia a fallas (probado)
 

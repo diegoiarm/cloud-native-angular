@@ -11,7 +11,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import cl.duoc.dsy1107.sensores.dto.AlertaSensor;
 import cl.duoc.dsy1107.sensores.dto.LecturaSensor;
 import java.util.concurrent.CompletableFuture;
 import org.apache.kafka.clients.producer.RecordMetadata;
@@ -58,8 +57,7 @@ class LecturaControllerTests {
                 .andExpect(status().isAccepted())
                 .andExpect(jsonPath("$.sensorId").value("sensor-A"))
                 .andExpect(jsonPath("$.particion").value(1))
-                .andExpect(jsonPath("$.offset").value(7))
-                .andExpect(jsonPath("$.alertaPublicada").value(false));
+                .andExpect(jsonPath("$.offset").value(7));
 
         verify(kafkaTemplate).send(eq("sensores-temperatura"), eq("sensor-A"),
                 any(LecturaSensor.class));
@@ -86,19 +84,6 @@ class LecturaControllerTests {
     }
 
     @Test
-    void temperaturaSobreUmbralPublicaAlertaEnElSegundoTopico() throws Exception {
-        mockMvc.perform(post("/api/lecturas")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"sensorId\":\"sensor-B\",\"temperatura\":31.2,"
-                                + "\"unidad\":\"C\",\"secuencia\":4}"))
-                .andExpect(status().isAccepted())
-                .andExpect(jsonPath("$.alertaPublicada").value(true));
-
-        verify(kafkaTemplate).send(eq("sensores-alertas"), eq("sensor-B"),
-                any(AlertaSensor.class));
-    }
-
-    @Test
     void kafkaCaidoDevuelve503() throws Exception {
         when(kafkaTemplate.send(anyString(), anyString(), any()))
                 .thenReturn(CompletableFuture.failedFuture(new IllegalStateException("broker")));
@@ -116,7 +101,6 @@ class LecturaControllerTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.servicio").value("ms-productor-sensores"))
                 .andExpect(jsonPath("$.topicoLecturas").value("sensores-temperatura"))
-                .andExpect(jsonPath("$.topicoAlertas").value("sensores-alertas"))
-                .andExpect(jsonPath("$.umbralAlertaC").value(30.0));
+                .andExpect(jsonPath("$.replicas").value(1));
     }
 }
