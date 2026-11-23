@@ -29,6 +29,7 @@
 
 x-zookeeper-common: &zookeeper-common
   image: confluentinc/cp-zookeeper:7.6.0
+  restart: unless-stopped
   healthcheck:
     # "ruok" responde "imok" cuando el nodo esta sirviendo.
     test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/2181 && echo ruok >&3 && grep -q imok <&3'"]
@@ -48,6 +49,11 @@ x-zookeeper-env: &zookeeper-env
 
 x-kafka-common: &kafka-common
   image: confluentinc/cp-kafka:7.6.0
+  # Tras un apagado brusco, ZooKeeper conserva unos segundos el registro
+  # efimero /brokers/ids/N de la sesion anterior y el broker aborta al arrancar
+  # ("node already exists"). Con el reinicio automatico vuelve a intentar y
+  # entra apenas vence esa sesion (~18 s).
+  restart: unless-stopped
   depends_on:
     zookeeper1:
       condition: service_healthy
@@ -158,6 +164,7 @@ services:
   kafka-ui:
     image: ghcr.io/kafbat/kafka-ui:v1.5.0
     container_name: pedidos360-kafka-ui-cluster
+    restart: unless-stopped
     ports:
       - "8091:8080"
     environment:
