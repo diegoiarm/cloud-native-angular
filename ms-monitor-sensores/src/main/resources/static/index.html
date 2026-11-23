@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Monitor de sensores</title>
+  <style>
+    :root { --fondo: #f6f7f9; --texto: #1d2430; --suave: #5b6576; --borde: #dde1e7;
+            --tarjeta: #fff; --alta: #b42318; --media: #b54708; --ok: #067647; }
+    @media (prefers-color-scheme: dark) {
+      :root { --fondo: #12161c; --texto: #e6e9ee; --suave: #9aa4b2; --borde: #2a313b;
+              --tarjeta: #1a2028; --alta: #f97066; --media: #fdb022; --ok: #47cd89; }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 16px; font: 15px/1.4 system-ui, sans-serif;
+           background: var(--fondo); color: var(--texto); }
+    header { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: baseline; margin-bottom: 16px; }
+    h1 { font-size: 20px; margin: 0; }
+    #conexion { font-size: 13px; color: var(--suave); }
+    #conexion.activa { color: var(--ok); }
+    main { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+    section { background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 8px; padding: 12px; }
+    h2 { font-size: 15px; margin: 0 0 8px; }
+    ol { list-style: none; margin: 0; padding: 0; max-height: 70vh; overflow: auto; }
+    li { padding: 6px 0; border-top: 1px solid var(--borde); font-variant-numeric: tabular-nums; }
+    li:first-child { border-top: 0; }
+    .meta { color: var(--suave); font-size: 12px; }
+    .ALTA { color: var(--alta); font-weight: 600; }
+    .MEDIA { color: var(--media); font-weight: 600; }
+    .vacio { color: var(--suave); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Monitor de sensores en tiempo real</h1>
+    <span id="conexion" role="status">conectando…</span>
+  </header>
+  <main>
+    <section aria-labelledby="t-lecturas">
+      <h2 id="t-lecturas">Lecturas (sensores-temperatura)</h2>
+      <ol id="lecturas"><li class="vacio">Esperando eventos…</li></ol>
+    </section>
+    <section aria-labelledby="t-alertas">
+      <h2 id="t-alertas">Alertas generadas por el monitor (sensores-alertas)</h2>
+      <ol id="alertas"><li class="vacio">Sin alertas todavía.</li></ol>
+    </section>
+  </main>
+  <script>
+    const MAX = 50;
+    const conexion = document.getElementById('conexion');
+
+    function agregar(lista, nodo) {
+      const ol = document.getElementById(lista);
+      ol.querySelector('.vacio')?.remove();
+      ol.prepend(nodo);
+      while (ol.children.length > MAX) ol.lastElementChild.remove();
+    }
+
+    function item(principal, meta, clase) {
+      const li = document.createElement('li');
+      const p = document.createElement('div');
+      p.textContent = principal;
+      if (clase) p.className = clase;
+      const m = document.createElement('div');
+      m.className = 'meta';
+      m.textContent = meta;
+      li.append(p, m);
+      return li;
+    }
+
+    const fuente = new EventSource('/api/monitor/stream');
+    fuente.onopen = () => { conexion.textContent = 'conectado'; conexion.classList.add('activa'); };
+    fuente.onerror = () => { conexion.textContent = 'reconectando…'; conexion.classList.remove('activa'); };
+
+    fuente.addEventListener('lectura', e => {
+      const l = JSON.parse(e.data);
+      agregar('lecturas', item(
+        `${l.sensorId} · ${l.temperatura} ${l.unidad} · secuencia ${l.secuencia}`,
+        `partición ${l.particion} · offset ${l.offset}`));
+    });
+
+    fuente.addEventListener('alerta', e => {
+      const a = JSON.parse(e.data);
+      agregar('alertas', item(
+        `${a.severidad} · ${a.sensorId} · ${a.temperatura} ${a.unidad}`,
+        `${a.motivo} · partición ${a.particion} · offset ${a.offset}`,
+        a.severidad));
+    });
+  </script>
+</body>
+</html>

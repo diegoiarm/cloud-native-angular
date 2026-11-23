@@ -10,7 +10,7 @@ Monorepo con los tres componentes de la entrega.
 | `catalogo-api/` | Microservicio de catálogo y stock | 8081 |
 | `rabbit-admin-api/` | Microservicio administrador de RabbitMQ (queues, exchanges, bindings) | 8082 |
 | `ms-productor-sensores/` | Productor REST de lecturas hacia Kafka (S13 / EP5) | 8085 |
-| `ms-monitor-sensores/` | Consumidor Kafka de lecturas y alertas (S13 / EP5) | 8086 |
+| `ms-monitor-sensores/` | Consumidor Kafka que reacciona a cada lectura y publica alertas (S13 / EP5-EP6) | 8086 |
 | `kafka-admin-api/` | Administrador Kafka por REST: topics, grupos y lag (EP5 / EP6) | 8084 |
 | `kafka-lab/` | Kafka KRaft + Kafbat UI (S12) y clúster de 3 ZooKeeper + 3 brokers (EP6) | 9092 / 8090 · clúster 9092-9094 / 8091 |
 | `infra/` | OpenAPI para AWS API Gateway, scripts de despliegue y clúster RabbitMQ | — |
@@ -265,14 +265,25 @@ las hojas de ruta EP5/EP6. **No reemplaza** la mensajería de Pedidos360: el
 laboratorio RabbitMQ sigue igual.
 
 ```
-ms-productor-sensores ──POST /api/lecturas──► Kafka sensores-temperatura
-                                            └► sensores-alertas (si temperatura >= 30 C)
-Kafka ──@KafkaListener──► ms-monitor-sensores ──GET /api/monitor/*──► navegador
+ms-productor-sensores ──POST /api/lecturas──► sensores-temperatura
+                                                      │ @KafkaListener
+                                                      ▼
+                                  ms-monitor-sensores (reglas: umbral, alza brusca)
+                                       │ reacciona                     │ SSE
+                                       ▼                               ▼
+                                 sensores-alertas ──► AlertaConsumer   navegador (tiempo real)
 kafka-admin-api ──AdminClient──► topics, consumer groups, offsets y lag
 Kafbat UI ──────────────────────► http://localhost:8090
 ```
 
-La guía completa (S12 y S13, experimentos, DLT, clúster ZooKeeper y tolerancia a fallas) está en
+**Procesamiento reactivo.** El productor solo ingiere lecturas. El monitor
+reacciona a cada una: si supera 30 °C (ALTA) o sube 5 °C o más respecto de la
+lectura anterior del mismo sensor (MEDIA), publica la alerta en
+`sensores-alertas` y la envía en vivo al navegador por SSE. La regla de alza
+usa estado por sensor, que es correcto porque la clave `sensorId` mantiene el
+orden de cada sensor dentro de su partición.
+
+La guía completa (S12 y S13, reacción, experimentos, DLT, clúster ZooKeeper y tolerancia a fallas) está en
 [`kafka-lab/README.md`](kafka-lab/README.md).
 
 ### Topics
@@ -280,7 +291,7 @@ La guía completa (S12 y S13, experimentos, DLT, clúster ZooKeeper y tolerancia
 | Topic | Particiones | RF local | RF clúster | Uso |
 |---|---|---|---|---|
 | `sensores-temperatura` | 3 | 1 | 3 | Lecturas `sensorId, temperatura, unidad, secuencia` |
-| `sensores-alertas` | 3 | 1 | 3 | Alertas cuando se supera el umbral |
+| `sensores-alertas` | 3 | 1 | 3 | Alertas que publica el monitor al reaccionar (umbral o alza brusca) |
 | `sensores-temperatura.DLT` | 3 | 1 | 3 | Mensajes que agotaron reintentos |
 | `sensores-alertas.DLT` | 3 | 1 | 3 | Idem para alertas |
 
@@ -309,10 +320,12 @@ powershell -ExecutionPolicy Bypass -File kafka-lab/scripts/05_enviar_6_lecturas.
 | Método | Ruta | Qué hace |
 |---|---|---|
 | POST | `/api/lecturas` | Publica una lectura; `202` con partición y offset |
-| GET | `/api/lecturas/estado` | Bootstrap, topics, umbral y réplicas |
+| GET | `/api/lecturas/estado` | Bootstrap, topic, particiones y réplicas |
 | GET | `/api/monitor/lecturas` | Últimas 50 lecturas en memoria |
 | GET | `/api/monitor/alertas` | Últimas 50 alertas en memoria |
-| GET | `/api/monitor/estado` | Grupo y contadores |
+| GET | `/api/monitor/estado` | Grupo, reglas y contadores |
+| GET | `/api/monitor/stream` | Lecturas y alertas en tiempo real (SSE) |
+| GET | `/` (puerto 8086) | Página del monitor en vivo |
 | GET | `/api/admin/kafka/cluster` | Cluster ID, controller y brokers |
 | GET/POST | `/api/admin/kafka/topics` | Listar o crear topics |
 | GET/DELETE | `/api/admin/kafka/topics/{nombre}` | Detalle o eliminación (los topics del laboratorio están protegidos) |
@@ -375,8 +388,9 @@ cd cloud-native-angular  && npm test
 Cubren los rechazos 401 y 403, los permisos de cada rol, las transiciones de estado, el
 descuento de stock, el contrato HTTP entre los microservicios, la topología de RabbitMQ, el
 ACK/NACK de los consumers y las validaciones del administrador. Los tests de Kafka cubren la
-validación del DTO, la publicación de alertas en el segundo topic, el tope de 50 en memoria,
-el retry/DLT configurado y las reglas del administrador. No necesitan broker.
+validación del DTO, las reglas de reacción (umbral, alza brusca y estado por sensor), la
+publicación de alertas en el segundo topic sin duplicar lecturas al reintentar, el destino
+de la DLT, el SSE, el tope de 50 en memoria y las reglas del administrador. No necesitan broker.
 
 ## Despliegue
 

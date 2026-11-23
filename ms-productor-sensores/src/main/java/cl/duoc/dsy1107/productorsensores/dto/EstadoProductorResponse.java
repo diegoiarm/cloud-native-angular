@@ -5,8 +5,6 @@ public record EstadoProductorResponse(
         String servicio,
         String bootstrapServers,
         String topicoLecturas,
-        String topicoAlertas,
-        double umbralAlertaC,
         int particiones,
         int replicas,
         long retencionMs) {

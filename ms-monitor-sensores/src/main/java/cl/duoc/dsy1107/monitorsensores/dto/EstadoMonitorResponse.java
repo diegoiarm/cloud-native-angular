@@ -7,5 +7,9 @@ public record EstadoMonitorResponse(
         String topicoLecturas,
         String topicoAlertas,
         int lecturasEnMemoria,
-        int alertasEnMemoria) {
+        int alertasEnMemoria,
+        double umbralAlertaC,
+        double alzaBruscaC,
+        long alertasPublicadas,
+        int suscriptoresTiempoReal) {
 }

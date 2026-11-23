@@ -1,6 +1,7 @@
 package cl.duoc.dsy1107.monitorsensores.consumer;
 
 import cl.duoc.dsy1107.monitorsensores.dto.AlertaRecibida;
+import cl.duoc.dsy1107.monitorsensores.service.EmisorEventos;
 import cl.duoc.dsy1107.monitorsensores.service.MemoriaAlertas;
 import cl.duoc.dsy1107.sensores.dto.AlertaSensor;
 import java.time.Instant;
@@ -12,6 +13,9 @@ import org.springframework.stereotype.Component;
 
 /**
  * Consumer del segundo topic, sensores-alertas (EP5: lógica de consumo separada).
+ *
+ * Recibe las alertas que publicó TemperaturaConsumer al reaccionar a una
+ * lectura, las guarda y las envía en tiempo real al navegador.
  */
 @Component
 public class AlertaConsumer {
@@ -19,9 +23,11 @@ public class AlertaConsumer {
     private static final Logger log = LoggerFactory.getLogger(AlertaConsumer.class);
 
     private final MemoriaAlertas memoria;
+    private final EmisorEventos emisor;
 
-    public AlertaConsumer(MemoriaAlertas memoria) {
+    public AlertaConsumer(MemoriaAlertas memoria, EmisorEventos emisor) {
         this.memoria = memoria;
+        this.emisor = emisor;
     }
 
     @KafkaListener(
@@ -34,7 +40,7 @@ public class AlertaConsumer {
                     "Alerta no deserializable en " + registro.topic() + " offset " + registro.offset());
         }
 
-        memoria.agregar(new AlertaRecibida(
+        AlertaRecibida recibida = new AlertaRecibida(
                 alerta.sensorId(),
                 alerta.temperatura(),
                 alerta.unidad(),
@@ -44,7 +50,9 @@ public class AlertaConsumer {
                 alerta.generadaEn(),
                 registro.partition(),
                 registro.offset(),
-                Instant.now()));
+                Instant.now());
+        memoria.agregar(recibida);
+        emisor.emitir("alerta", recibida);
 
         log.warn("[ALERTA] key={} particion={} offset={} {}",
                 registro.key(), registro.partition(), registro.offset(), alerta);

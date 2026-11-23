@@ -4,6 +4,5 @@ package cl.duoc.dsy1107.productorsensores.dto;
 public record PublicacionResponse(
         String sensorId,
         int particion,
-        long offset,
-        boolean alertaPublicada) {
+        long offset) {
 }

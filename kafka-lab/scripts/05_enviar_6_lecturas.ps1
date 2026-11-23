@@ -1,7 +1,7 @@
 # Documento 01 S13, seccion 4, paso 7: enviar seis lecturas por REST al productor.
 # Requiere ms-productor-sensores en http://localhost:8085 (o el puerto indicado).
-# Las lecturas con temperatura >= UMBRAL_ALERTA_C (30.0 por defecto) tambien
-# generan un evento en el segundo topic, sensores-alertas.
+# El monitor reacciona a cada lectura: sensor-B pasa de 22.1 a 31.2 C (umbral y
+# alza brusca) y luego 32.8 C, asi que publica 2 alertas en sensores-alertas.
 #
 # Uso desde la raiz del repositorio:
 #   powershell -ExecutionPolicy Bypass -File kafka-lab/scripts/05_enviar_6_lecturas.ps1
