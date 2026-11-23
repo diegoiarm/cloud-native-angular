@@ -1,10 +1,19 @@
-# Laboratorio EP6: cluster Kafka KRaft de tres brokers (documento 05 S12/S13).
+# EP6: cluster Kafka con 3 nodos ZooKeeper y 3 brokers (topologia de la pauta EP6).
 #
 # Topologia:
-#   kafka1 -> host 9092, interno kafka1:19092, controller kafka1:19093
-#   kafka2 -> host 9093, interno kafka2:19092, controller kafka2:19093
-#   kafka3 -> host 9094, interno kafka3:19092, controller kafka3:19093
+#   zookeeper1..3 -> ensemble ZooKeeper (cliente 2181, quorum 2888, eleccion 3888)
+#                    host 2181, 2182, 2183
+#   kafka1 -> host 9092, interno kafka1:19092
+#   kafka2 -> host 9093, interno kafka2:19092
+#   kafka3 -> host 9094, interno kafka3:19092
 #   Kafbat UI -> http://localhost:8091 (bootstrap interno de los tres brokers)
+#
+# ZooKeeper guarda la metadata del cluster: brokers registrados (/brokers/ids),
+# el controller elegido (/controller) y la configuracion de topics. Con 3 nodos
+# el ensemble tolera la caida de 1 (necesita mayoria: 2 de 3).
+#
+# Se usa Confluent Platform 7.6 (Kafka 3.6) porque Apache Kafka 4.x ya no
+# soporta ZooKeeper. El laboratorio de un broker (compose.yaml) sigue en KRaft.
 #
 # Uso:
 #   docker compose -f kafka-lab/compose.cluster.yaml up -d
@@ -16,34 +25,97 @@
 #
 # Los factores internos de Kafka se declaran en 3 para que __consumer_offsets y
 # __transaction_state sobrevivan a la caida de un broker. Los topics de negocio
-# se crean con replication-factor=3 desde el script 07.
+# se crean con replication-factor=3 (script 07 o perfil "cluster" de los servicios).
+
+x-zookeeper-common: &zookeeper-common
+  image: confluentinc/cp-zookeeper:7.6.0
+  healthcheck:
+    # "ruok" responde "imok" cuando el nodo esta sirviendo.
+    test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/2181 && echo ruok >&3 && grep -q imok <&3'"]
+    interval: 10s
+    timeout: 5s
+    retries: 12
+    start_period: 15s
+
+x-zookeeper-env: &zookeeper-env
+  ZOOKEEPER_CLIENT_PORT: 2181
+  ZOOKEEPER_TICK_TIME: 2000
+  ZOOKEEPER_INIT_LIMIT: 5
+  ZOOKEEPER_SYNC_LIMIT: 2
+  ZOOKEEPER_SERVERS: zookeeper1:2888:3888;zookeeper2:2888:3888;zookeeper3:2888:3888
+  # Comandos de diagnostico usados por el healthcheck y el script 08.
+  KAFKA_OPTS: "-Dzookeeper.4lw.commands.whitelist=ruok,srvr,stat"
 
 x-kafka-common: &kafka-common
-  image: apache/kafka:4.2.2
-  environment: &kafka-common-env
-    CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
-    KAFKA_PROCESS_ROLES: broker,controller
-    KAFKA_LISTENERS: EXTERNAL://:9092,INTERNAL://:19092,CONTROLLER://:19093
-    KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
-    KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-    KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka1:19093,2@kafka2:19093,3@kafka3:19093
-    KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: EXTERNAL:PLAINTEXT,INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
-    KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
-    KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
-    KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
-    KAFKA_MIN_INSYNC_REPLICAS: 2
-    KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
-    KAFKA_NUM_PARTITIONS: 3
-    KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
-    KAFKA_LOG_DIRS: /var/lib/kafka/data
+  image: confluentinc/cp-kafka:7.6.0
+  depends_on:
+    zookeeper1:
+      condition: service_healthy
+    zookeeper2:
+      condition: service_healthy
+    zookeeper3:
+      condition: service_healthy
   healthcheck:
-    test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1"]
+    test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:19092 --list >/dev/null 2>&1"]
     interval: 10s
-    timeout: 10s
+    timeout: 15s
     retries: 15
-    start_period: 25s
+    start_period: 30s
+
+x-kafka-env: &kafka-env
+  KAFKA_ZOOKEEPER_CONNECT: zookeeper1:2181,zookeeper2:2181,zookeeper3:2181
+  KAFKA_LISTENERS: EXTERNAL://0.0.0.0:9092,INTERNAL://0.0.0.0:19092
+  KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: EXTERNAL:PLAINTEXT,INTERNAL:PLAINTEXT
+  KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+  KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+  KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+  KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+  KAFKA_MIN_INSYNC_REPLICAS: 2
+  KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+  KAFKA_NUM_PARTITIONS: 3
+  KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+  KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
 
 services:
+  zookeeper1:
+    <<: *zookeeper-common
+    container_name: pedidos360-zookeeper1
+    hostname: zookeeper1
+    ports:
+      - "2181:2181"
+    environment:
+      <<: *zookeeper-env
+      ZOOKEEPER_SERVER_ID: 1
+    volumes:
+      - zookeeper1_data:/var/lib/zookeeper/data
+      - zookeeper1_log:/var/lib/zookeeper/log
+
+  zookeeper2:
+    <<: *zookeeper-common
+    container_name: pedidos360-zookeeper2
+    hostname: zookeeper2
+    ports:
+      - "2182:2181"
+    environment:
+      <<: *zookeeper-env
+      ZOOKEEPER_SERVER_ID: 2
+    volumes:
+      - zookeeper2_data:/var/lib/zookeeper/data
+      - zookeeper2_log:/var/lib/zookeeper/log
+
+  zookeeper3:
+    <<: *zookeeper-common
+    container_name: pedidos360-zookeeper3
+    hostname: zookeeper3
+    ports:
+      - "2183:2181"
+    environment:
+      <<: *zookeeper-env
+      ZOOKEEPER_SERVER_ID: 3
+    volumes:
+      - zookeeper3_data:/var/lib/zookeeper/data
+      - zookeeper3_log:/var/lib/zookeeper/log
+
   kafka1:
     <<: *kafka-common
     container_name: pedidos360-kafka1
@@ -51,11 +123,11 @@ services:
     ports:
       - "9092:9092"
     environment:
-      <<: *kafka-common-env
-      KAFKA_NODE_ID: 1
+      <<: *kafka-env
+      KAFKA_BROKER_ID: 1
       KAFKA_ADVERTISED_LISTENERS: EXTERNAL://localhost:9092,INTERNAL://kafka1:19092
     volumes:
-      - kafka1_data:/var/lib/kafka/data
+      - broker1_data:/var/lib/kafka/data
 
   kafka2:
     <<: *kafka-common
@@ -64,11 +136,11 @@ services:
     ports:
       - "9093:9092"
     environment:
-      <<: *kafka-common-env
-      KAFKA_NODE_ID: 2
+      <<: *kafka-env
+      KAFKA_BROKER_ID: 2
       KAFKA_ADVERTISED_LISTENERS: EXTERNAL://localhost:9093,INTERNAL://kafka2:19092
     volumes:
-      - kafka2_data:/var/lib/kafka/data
+      - broker2_data:/var/lib/kafka/data
 
   kafka3:
     <<: *kafka-common
@@ -77,11 +149,11 @@ services:
     ports:
       - "9094:9092"
     environment:
-      <<: *kafka-common-env
-      KAFKA_NODE_ID: 3
+      <<: *kafka-env
+      KAFKA_BROKER_ID: 3
       KAFKA_ADVERTISED_LISTENERS: EXTERNAL://localhost:9094,INTERNAL://kafka3:19092
     volumes:
-      - kafka3_data:/var/lib/kafka/data
+      - broker3_data:/var/lib/kafka/data
 
   kafka-ui:
     image: ghcr.io/kafbat/kafka-ui:v1.5.0
@@ -101,6 +173,12 @@ services:
         condition: service_healthy
 
 volumes:
-  kafka1_data:
-  kafka2_data:
-  kafka3_data:
+  zookeeper1_data:
+  zookeeper1_log:
+  zookeeper2_data:
+  zookeeper2_log:
+  zookeeper3_data:
+  zookeeper3_log:
+  broker1_data:
+  broker2_data:
+  broker3_data:

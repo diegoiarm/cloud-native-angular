@@ -1,4 +1,4 @@
-# Perfil del cluster de 3 brokers (kafka-lab/compose.cluster.yaml, EP6).
+# Perfil del cluster de 3 ZooKeeper + 3 brokers (kafka-lab/compose.cluster.yaml, EP6).
 #
 #   ./mvnw spring-boot:run -Dspring-boot.run.profiles=cluster
 #

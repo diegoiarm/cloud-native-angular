@@ -19,9 +19,11 @@ $composeFile = if ($Cluster) { "kafka-lab/compose.cluster.yaml" } else { "kafka-
 $compose = Join-Path $repo $composeFile
 $servicio = if ($Cluster) { "kafka1" } else { "kafka" }
 $bootstrap = if ($Cluster) { "kafka1:19092" } else { "kafka:9093" }
+# El cluster usa imagenes Confluent (comandos sin ruta ni .sh).
+$cli = if ($Cluster) { "kafka-consumer-groups" } else { "/opt/kafka/bin/kafka-consumer-groups.sh" }
 
 Write-Host "Estado del consumer group $Grupo..."
 docker compose -f $compose exec -T $servicio `
-    /opt/kafka/bin/kafka-consumer-groups.sh `
+    $cli `
     --bootstrap-server $bootstrap `
     --describe --group $Grupo

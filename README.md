@@ -12,7 +12,7 @@ Monorepo con los tres componentes de la entrega.
 | `ms-productor-sensores/` | Productor REST de lecturas hacia Kafka (S13 / EP5) | 8085 |
 | `ms-monitor-sensores/` | Consumidor Kafka de lecturas y alertas (S13 / EP5) | 8086 |
 | `kafka-admin-api/` | Administrador Kafka por REST: topics, grupos y lag (EP5 / EP6) | 8084 |
-| `kafka-lab/` | Kafka KRaft + Kafbat UI, scripts y clúster de 3 brokers (S12 / EP6) | 9092 / 8090 · clúster 9092-9094 / 8091 |
+| `kafka-lab/` | Kafka KRaft + Kafbat UI (S12) y clúster de 3 ZooKeeper + 3 brokers (EP6) | 9092 / 8090 · clúster 9092-9094 / 8091 |
 | `infra/` | OpenAPI para AWS API Gateway, scripts de despliegue y clúster RabbitMQ | — |
 | `monitor/` | Monitor de colas por la Management API (Python, sin dependencias) | — |
 | `docker-compose.yml` | Broker RabbitMQ single-node para la mensajería asíncrona | 5672 / 15672 |
@@ -272,7 +272,7 @@ kafka-admin-api ──AdminClient──► topics, consumer groups, offsets y la
 Kafbat UI ──────────────────────► http://localhost:8090
 ```
 
-La guía completa (S12 y S13, experimentos, DLT y clúster de 3 brokers) está en
+La guía completa (S12 y S13, experimentos, DLT, clúster ZooKeeper y tolerancia a fallas) está en
 [`kafka-lab/README.md`](kafka-lab/README.md).
 
 ### Topics
@@ -333,7 +333,13 @@ una lectura con `sensorId = "sensor-fallo"`:
 powershell -ExecutionPolicy Bypass -File kafka-lab/scripts/09_probar_dlt.ps1
 ```
 
-### Clúster de 3 brokers (EP6)
+### Clúster de 3 ZooKeeper + 3 brokers (EP6)
+
+Topología de la pauta EP6: un ensemble de tres nodos ZooKeeper (metadata,
+registro de brokers y elección del controller) y tres brokers con RF3. Usa
+Confluent Platform 7.6 (Kafka 3.6), porque Apache Kafka 4.x ya no soporta
+ZooKeeper. El script 08 muestra el leader del ensemble, los brokers
+registrados, el controller y las particiones sub-replicadas.
 
 ```bash
 docker compose -f kafka-lab/compose.cluster.yaml up -d
