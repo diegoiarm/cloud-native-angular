@@ -62,7 +62,7 @@ Bean Validation (`secuencia` negativa → 400).
 
 ## DLT de Kafka frente a DLQ de RabbitMQ
 
-No son lo mismo y no se deben confundir en la defensa:
+Son mecanismos distintos:
 
 - **DLQ (RabbitMQ):** una cola. El mensaje llega por el dead-letter exchange
   cuando el consumer hace NACK sin reencolar. Se consume o se purga.

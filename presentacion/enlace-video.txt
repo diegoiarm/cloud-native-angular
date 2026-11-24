@@ -1,7 +1,0 @@
-DSY1107-002 | EP6 - Video grupal de presentacion tecnica
-
-Enlace: [PEGAR AQUI EL ENLACE DEL VIDEO]
-Duracion: [mm:ss]
-Integrantes: [NOMBRES COMPLETOS]
-
-Verificar que el enlace se abre sin iniciar sesion (ventana de incognito).
