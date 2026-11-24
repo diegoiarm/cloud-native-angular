@@ -26,6 +26,13 @@ public class EmisorEventos {
             emisor.complete();
         });
         emisor.onError(error -> suscriptores.remove(emisor));
+        try {
+            // Sin un primer envío Spring no manda la respuesta y el navegador
+            // sigue en "conectando" hasta que llegue la primera lectura.
+            emisor.send(SseEmitter.event().name("conectado").data("ok"));
+        } catch (IOException e) {
+            suscriptores.remove(emisor);
+        }
         return emisor;
     }
 

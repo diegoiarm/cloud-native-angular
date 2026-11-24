@@ -1,0 +1,159 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 860" width="1280" height="860" font-family="Segoe UI, Arial, sans-serif">
+  <title>Arquitectura Pedidos360 — DSY1107 EP5/EP6</title>
+  <defs>
+    <marker id="f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#3d4756"/>
+    </marker>
+    <marker id="fk" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1d6fb8"/>
+    </marker>
+    <marker id="fr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#c2410c"/>
+    </marker>
+    <style>
+      .zona { fill: #f7f8fa; stroke: #c9ced6; stroke-width: 1.5; stroke-dasharray: 6 4; rx: 14; }
+      .zt { font-size: 15px; font-weight: 700; fill: #3d4756; }
+      .caja { fill: #ffffff; stroke: #3d4756; stroke-width: 1.5; rx: 8; }
+      .t { font-size: 14px; font-weight: 600; fill: #1d2430; }
+      .s { font-size: 12px; fill: #5b6576; }
+      .kafka { fill: #e8f1fb; stroke: #1d6fb8; }
+      .rabbit { fill: #fff1e8; stroke: #c2410c; }
+      .zk { fill: #eef7ee; stroke: #2f7d32; }
+      .linea { stroke: #3d4756; stroke-width: 1.6; fill: none; marker-end: url(#f); }
+      .lk { stroke: #1d6fb8; stroke-width: 1.8; fill: none; marker-end: url(#fk); }
+      .lr { stroke: #c2410c; stroke-width: 1.8; fill: none; marker-end: url(#fr); }
+      .et { font-size: 11.5px; fill: #3d4756; }
+      .ek { font-size: 11.5px; fill: #1d6fb8; font-weight: 600; }
+      .er { font-size: 11.5px; fill: #c2410c; font-weight: 600; }
+    </style>
+  </defs>
+
+  <rect width="1280" height="860" fill="#ffffff"/>
+  <text x="24" y="34" font-size="22" font-weight="700" fill="#1d2430">Pedidos360 — arquitectura acumulada del semestre</text>
+  <text x="24" y="56" font-size="13" fill="#5b6576">Angular + Entra ID + API Gateway + microservicios Spring Boot + PostgreSQL + RabbitMQ (pedidos) + Kafka con 3 ZooKeeper y 3 brokers (sensores de cocina)</text>
+
+  <!-- Usuario y frontend -->
+  <rect class="caja" x="24" y="90" width="190" height="64"/>
+  <text class="t" x="40" y="116">Frontend Angular 21</text>
+  <text class="s" x="40" y="136">MSAL · Admin / Operador / Cliente</text>
+
+  <rect class="caja" x="24" y="196" width="190" height="56"/>
+  <text class="t" x="40" y="220">Microsoft Entra ID</text>
+  <text class="s" x="40" y="238">IDaaS · emite el JWT</text>
+  <path class="linea" d="M119,154 L119,194"/>
+  <text class="et" x="126" y="180">login / token</text>
+
+  <!-- AWS -->
+  <rect class="zona" x="250" y="76" width="560" height="320"/>
+  <text class="zt" x="266" y="100">AWS us-east-1</text>
+
+  <rect class="caja" x="270" y="114" width="200" height="60"/>
+  <text class="t" x="286" y="139">API Gateway (HTTP API)</text>
+  <text class="s" x="286" y="158">JWT Authorizer · Pedidos.Read</text>
+  <path class="linea" d="M214,122 L268,138"/>
+  <text class="et" x="222" y="146">JWT</text>
+
+  <rect class="caja" x="270" y="210" width="200" height="62"/>
+  <text class="t" x="286" y="236">pedidos-api :8080</text>
+  <text class="s" x="286" y="255">EC2 · estados y reglas</text>
+
+  <rect class="caja" x="520" y="210" width="200" height="62"/>
+  <text class="t" x="536" y="236">catalogo-api :8081</text>
+  <text class="s" x="536" y="255">EC2 · productos y stock</text>
+
+  <path class="linea" d="M370,174 L370,208"/>
+  <path class="linea" d="M470,150 L620,150 L620,208"/>
+  <path class="linea" d="M470,241 L518,241"/>
+  <text class="et" x="474" y="234">token</text>
+
+  <rect class="caja" x="270" y="312" width="450" height="60"/>
+  <text class="t" x="286" y="337">RDS PostgreSQL</text>
+  <text class="s" x="286" y="356">pedidosdb · catalogodb</text>
+  <path class="linea" d="M370,272 L370,310"/>
+  <path class="linea" d="M620,272 L620,310"/>
+
+  <!-- RabbitMQ -->
+  <rect class="zona" x="836" y="76" width="420" height="320"/>
+  <text class="zt" x="852" y="100">RabbitMQ — tareas asíncronas de pedidos</text>
+
+  <rect class="caja rabbit" x="856" y="114" width="380" height="54"/>
+  <text class="t" x="872" y="137">Clúster de 2 nodos (rabbit1, rabbit2)</text>
+  <text class="s" x="872" y="155">exchanges pedidos360.direct / topic / dlx</text>
+
+  <rect class="caja rabbit" x="856" y="190" width="118" height="54"/>
+  <text class="t" x="866" y="213">cocina</text>
+  <text class="s" x="866" y="231">pedido.aceptado</text>
+  <rect class="caja rabbit" x="987" y="190" width="118" height="54"/>
+  <text class="t" x="997" y="213">documentos</text>
+  <text class="s" x="997" y="231">pedido.despachado</text>
+  <rect class="caja rabbit" x="1118" y="190" width="118" height="54"/>
+  <text class="t" x="1128" y="213">notificaciones</text>
+  <text class="s" x="1128" y="231">pedido.#</text>
+
+  <rect class="caja rabbit" x="856" y="266" width="380" height="50"/>
+  <text class="t" x="872" y="288">.retry (5 s) → 3 intentos → .dlq por cola</text>
+  <text class="s" x="872" y="305">ACK/NACK manual · DLX pedidos360.dlx.exchange</text>
+
+  <rect class="caja" x="856" y="332" width="380" height="46"/>
+  <text class="t" x="872" y="353">rabbit-admin-api :8082</text>
+  <text class="s" x="872" y="370">colas, exchanges, bindings por REST (rol Admin)</text>
+
+  <path class="lr" d="M470,226 C640,190 700,140 854,141"/>
+  <text class="er" x="690" y="168">eventos de pedido</text>
+
+  <!-- Kafka -->
+  <rect class="zona" x="24" y="424" width="1232" height="412"/>
+  <text class="zt" x="40" y="448">Kafka — streaming de lecturas de sensores de cocina (Docker, kafka-lab/compose.cluster.yaml)</text>
+
+  <rect class="caja zk" x="44" y="466" width="300" height="118"/>
+  <text class="t" x="60" y="490">Ensemble ZooKeeper</text>
+  <text class="s" x="60" y="510">zookeeper1 · zookeeper2 · zookeeper3</text>
+  <text class="s" x="60" y="528">1 leader + 2 followers (mayoría 2 de 3)</text>
+  <text class="s" x="60" y="546">/brokers/ids · /controller · config topics</text>
+  <text class="s" x="60" y="564">puertos 2181-2183</text>
+
+  <rect class="caja kafka" x="384" y="466" width="440" height="118"/>
+  <text class="t" x="400" y="490">3 brokers: kafka1 :9092 · kafka2 :9093 · kafka3 :9094</text>
+  <text class="s" x="400" y="512">sensores-temperatura — 3 particiones · RF3 · 24 h</text>
+  <text class="s" x="400" y="530">sensores-alertas — 3 particiones · RF3 · 24 h</text>
+  <text class="s" x="400" y="548">*.DLT — 3 particiones · RF3 · 7 días</text>
+  <text class="s" x="400" y="566">min.insync.replicas=2 · clave sensorId</text>
+  <path class="linea" d="M344,525 L382,525"/>
+
+  <rect class="caja" x="864" y="466" width="372" height="56"/>
+  <text class="t" x="880" y="490">Kafbat UI :8091</text>
+  <text class="s" x="880" y="508">brokers, topics, offsets, consumer groups, lag</text>
+  <rect class="caja" x="864" y="534" width="372" height="50"/>
+  <text class="t" x="880" y="556">kafka-admin-api :8084</text>
+  <text class="s" x="880" y="573">AdminClient: topics, grupos y lag (JWT, rol Admin)</text>
+  <path class="linea" d="M862,494 L826,510"/>
+  <path class="linea" d="M862,558 L826,548"/>
+
+  <rect class="caja" x="44" y="640" width="250" height="74"/>
+  <text class="t" x="60" y="664">ms-productor-sensores :8085</text>
+  <text class="s" x="60" y="683">POST /api/lecturas · KafkaTemplate</text>
+  <text class="s" x="60" y="700">solo ingiere (acks=all, idempotente)</text>
+
+  <rect class="caja kafka" x="384" y="640" width="440" height="160"/>
+  <text class="t" x="400" y="664">ms-monitor-sensores :8086 · grupo-monitor-s13</text>
+  <text class="s" x="400" y="686">TemperaturaConsumer (@KafkaListener)</text>
+  <text class="s" x="414" y="704">→ ReglasReaccion: UMBRAL ≥ 30 °C (ALTA)</text>
+  <text class="s" x="528" y="722">ALZA_BRUSCA ≥ 5 °C mismo sensor (MEDIA)</text>
+  <text class="s" x="414" y="740">→ PublicadorAlertas → sensores-alertas</text>
+  <text class="s" x="400" y="758">AlertaConsumer (@KafkaListener)</text>
+  <text class="s" x="400" y="776">DefaultErrorHandler: 1 + 2 reintentos → &lt;topic&gt;.DLT</text>
+
+  <rect class="caja" x="864" y="680" width="372" height="74"/>
+  <text class="t" x="880" y="704">Navegador :8086/</text>
+  <text class="s" x="880" y="723">GET /api/monitor/stream (SSE)</text>
+  <text class="s" x="880" y="740">lecturas y alertas en tiempo real</text>
+
+  <path class="lk" d="M169,640 L169,610 L480,610 L480,586"/>
+  <text class="ek" x="180" y="604">publica lectura (key = sensorId)</text>
+  <path class="lk" d="M560,586 L560,638"/>
+  <text class="ek" x="568" y="618">consume</text>
+  <path class="lk" d="M720,638 L720,586"/>
+  <text class="ek" x="728" y="618">publica alerta</text>
+  <path class="lk" d="M824,717 L862,717"/>
+  <text class="ek" x="826" y="708">SSE</text>
+</svg>
