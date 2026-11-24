@@ -15,8 +15,7 @@ Monorepo con los tres componentes de la entrega.
 | `kafka-lab/` | Kafka KRaft + Kafbat UI (S12) y clúster de 3 ZooKeeper + 3 brokers (EP6) | 9092 / 8090 · clúster 9092-9094 / 8091 |
 | `infra/` | OpenAPI para AWS API Gateway, scripts de despliegue y clúster RabbitMQ | — |
 | `monitor/` | Monitor de colas por la Management API (Python, sin dependencias) | — |
-| `documentacion/` | Arquitectura, caso de uso, flujos, tópicos y colas, evidencias y guía de defensa | — |
-| `presentacion/` | Guion del video EP6 y enlace | — |
+| `documentacion/` | Arquitectura, caso de uso, flujos, tópicos y colas, y evidencias de pruebas | — |
 | `docker-compose.yml` | Broker RabbitMQ single-node para la mensajería asíncrona | 5672 / 15672 |
 
 ```
